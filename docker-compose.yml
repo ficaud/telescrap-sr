@@ -1,0 +1,53 @@
+services:
+  # Scanner Instance 1 - Port 3000
+  scanner-1:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: local-runtime
+    container_name: telescrap-scanner-1
+    ports:
+      - "3000:3000"
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN_SCANNER_1}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID_SCANNER_1}
+      - SHOP_EMAIL=${SHOP_EMAIL}
+      - SHOP_PASSWORD=${SHOP_PASSWORD}
+      - RUST_LOG=${RUST_LOG:-info}
+      - INSTANCE_ID=scanner-1
+    env_file:
+      - .env
+    volumes:
+      - scanner-1-data:/app/data
+    restart: unless-stopped
+
+  # Scanner Instance 2 - Port 3001
+  scanner-2:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: local-runtime
+    container_name: telescrap-scanner-2
+    ports:
+      - "3001:3000"
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN_SCANNER_2}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID_SCANNER_2}
+      - SHOP_EMAIL=${SHOP_EMAIL}
+      - SHOP_PASSWORD=${SHOP_PASSWORD}
+      - RUST_LOG=${RUST_LOG:-info}
+      - INSTANCE_ID=scanner-2
+    env_file:
+      - .env
+    volumes:
+      - scanner-2-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  scanner-1-data:
+  scanner-2-data:
+
+networks:
+  default:
+    name: telescrap-network
+    driver: bridge
