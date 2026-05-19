@@ -1,4 +1,4 @@
-name: Build and Deploy
+name: Build and Publish Docker Image
 on:
   push:
     branches: [ main, dev/jfi ]
@@ -53,43 +53,3 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-
-  deploy-on-raspberry:
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev/jfi'
-    needs: publish-artifact-image
-    runs-on:
-      - self-hosted
-      - linux
-      - ARM64
-    permissions:
-      contents: read
-      packages: read
-    env:
-      IMAGE_NAME: ${{ needs.publish-artifact-image.outputs.image_name }}
-      DEPLOY_IMAGE: ${{ needs.publish-artifact-image.outputs.image_name }}:sha-${{ github.sha }}
-      INSTALL_DIR: /home/jfi/telescrap/
-      BINARY_NAME: telescrap-sr
-      SERVICE_NAME: ${{ github.ref == 'refs/heads/main' && 'telescrap@bot3' || 'telescrap@bot2' }}
-    steps:
-      - name: Log in to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Pull artifact image
-        run: docker pull "$DEPLOY_IMAGE"
-
-      - name: Install binary from artifact image
-        run: |
-          mkdir -p "$INSTALL_DIR"
-          container_id=$(docker create "$DEPLOY_IMAGE" "/$BINARY_NAME")
-          trap 'docker rm -f "$container_id" >/dev/null 2>&1 || true' EXIT
-          docker cp "$container_id:/$BINARY_NAME" "$INSTALL_DIR/$BINARY_NAME"
-          chmod 755 "$INSTALL_DIR/$BINARY_NAME"
-
-      - name: Restart service
-        run: |
-          sudo systemctl restart "$SERVICE_NAME"
-          sudo systemctl status "$SERVICE_NAME" --no-pager
