@@ -1,10 +1,7 @@
 services:
   # Scanner Instance 1 - Port 3000
   scanner-1:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: local-runtime
+    image: ${DOCKER_IMAGE:-ghcr.io/ficaud/telescrap-sr:latest}
     container_name: telescrap-scanner-1
     ports:
       - "3000:3000"
@@ -23,10 +20,7 @@ services:
 
   # Scanner Instance 2 - Port 3001
   scanner-2:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: local-runtime
+    image: ${DOCKER_IMAGE:-ghcr.io/ficaud/telescrap-sr:latest}
     container_name: telescrap-scanner-2
     ports:
       - "3001:3000"
