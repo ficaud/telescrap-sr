@@ -3,7 +3,7 @@
 # - local-runtime: Full runtime image with Debian (for local Docker Compose)
 # - ci-runtime: Minimal image with just the binary (for GitHub Actions CI/CD)
 
-# ==============================================================================
+# ============================================================================== 
 # Build Stage - Common for all targets
 # ==============================================================================
 FROM rust:1.89-slim-bookworm AS builder
@@ -24,7 +24,7 @@ COPY . .
 # Build the binary (release mode for smaller, optimized binary)
 RUN cargo build --release --bin telescrap-sr
 
-# ==============================================================================
+# ============================================================================== 
 # Target 1: local-runtime - Full runtime image for local Docker Compose
 # ==============================================================================
 FROM debian:bookworm-slim AS local-runtime
@@ -45,17 +45,18 @@ WORKDIR /app
 # Copy the built binary from builder
 COPY --from=builder /app/target/release/telescrap-sr /usr/local/bin/telescrap-sr
 
-# Copy config file
-COPY --chown=telescrap:telescrap config_scan.json /app/config_scan.json
+# Copy entrypoint script
+COPY --chown=telescrap:telescrap docker/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
 
 USER telescrap
 
 # Default environment variables (can be overridden)
 ENV RUST_LOG=info
 
-CMD ["telescrap-sr"]
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 
-# ==============================================================================
+# ============================================================================== 
 # Target 2: ci-runtime - Minimal image with just the binary (for CI/CD)
 # ==============================================================================
 FROM scratch AS ci-runtime

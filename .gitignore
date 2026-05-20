@@ -13,4 +13,3 @@ crates/scanner/src/main.rs
 state.db
 crates/admin-panel/src/main.rs
 crates/filter/src/main.rs
-config_scan.json

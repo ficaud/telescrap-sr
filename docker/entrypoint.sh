@@ -1,9 +1,18 @@
+#!/bin/sh
+set -e
+
+PERSISTED_CONFIG="/app/data/config_scan.json"
+ACTIVE_CONFIG="/app/config_scan.json"
+
+# Keep config in the persistent volume so app updates survive container recreation.
+if [ ! -f "$PERSISTED_CONFIG" ]; then
+    cat > "$PERSISTED_CONFIG" <<EOF
 {
-    "mode": "Aggressive",
+    "mode": "Passive",
     "interval": 60,
     "club": "StadeRochelais",
     "nature": "Rugby",
-    "is_preview": false,
+    "is_preview": true,
     "filter_chain": [
         {
             "type": "Encounter",
@@ -23,3 +32,9 @@
         }
     ]
 }
+EOF
+fi
+
+ln -sf "$PERSISTED_CONFIG" "$ACTIVE_CONFIG"
+
+exec telescrap-sr
