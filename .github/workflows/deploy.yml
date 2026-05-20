@@ -10,17 +10,14 @@ permissions:
   packages: write
 
 jobs:
-  publish-artifact-image:
+  publish-public-image:
     runs-on: ubuntu-latest
-    outputs:
-      image_name: ${{ steps.image.outputs.name }}
+    permissions:
+      contents: read
+      packages: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Compute image name
-        id: image
-        run: echo "name=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -36,20 +33,22 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ steps.image.outputs.name }}
+          images: ghcr.io/${{ github.repository }}
           tags: |
-            type=raw,value=main,enable={{is_default_branch}}
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=semver,pattern={{version}}
             type=ref,event=branch
             type=ref,event=tag
-            type=sha,prefix=sha-,format=long
 
-      - name: Build and push artifact image
+      - name: Build and push public image
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: Dockerfile
-          target: ci-runtime
-          platforms: linux/arm64
+          file: docker/Dockerfile
+          target: local-runtime
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=telescrap-public-image
+          cache-to: type=gha,mode=max,scope=telescrap-public-image
