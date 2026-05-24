@@ -32,7 +32,7 @@ async fn main() {
     let scan_config = ScannerHandle::configure();
 
     // ------- Step 1 : Notify startup and create config channel -------
-    notifier.notify_state(scan_config.clone());
+    // notifier.notify_state(scan_config.clone());
 
     // ------- Step 2 : Create the watch channel -------
     // Create the watch channel — config_tx allows sending config updates at runtime
