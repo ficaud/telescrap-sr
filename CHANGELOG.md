@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.6] - 2026-05-24
+
+### Added
+- Docker Compose configuration for multi-instance deployment on a personal server (for example, a Raspberry Pi).
+- Documentation for multi-instance deployment on a personal server (Raspberry Pi), including Docker Compose and manual setup instructions.
+- Workflow dispatch inputs in CI to choose the runner for manual executions (GitHub-hosted or self-hosted).
+- Example configuration for running two bot instances with Docker Compose (in the `examples/docker/` folder).
+
+### Removed
+- The old ci raspberry pi publishing workflow, replaced by a new workflow that builds and publishes the docker image to GitHub Container Registry.
+- Telegram notification pinned message on startup, as it was not very useful.
+
 ## [2.1.5] - 2026-04-26
 
 ### Changed

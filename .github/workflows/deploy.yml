@@ -1,26 +1,33 @@
-name: Build and Deploy
+name: Build and Publish Docker Image
 on:
   push:
     branches: [ main, dev/jfi ]
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      runner:
+        description: Choose the runner for a manual execution
+        required: true
+        default: ubuntu-latest
+        type: choice
+        options:
+          - ubuntu-latest
+          - self-hosted
 
 permissions:
   contents: read
   packages: write
 
 jobs:
-  publish-artifact-image:
-    runs-on: ubuntu-latest
-    outputs:
-      image_name: ${{ steps.image.outputs.name }}
+  publish-public-image:
+    runs-on: ${{ github.event_name == 'workflow_dispatch' && inputs.runner == 'self-hosted-arm64' && fromJSON('["self-hosted", "linux", "arm64"]') || 'ubuntu-latest' }}
+    permissions:
+      contents: read
+      packages: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Compute image name
-        id: image
-        run: echo "name=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -36,63 +43,22 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ steps.image.outputs.name }}
+          images: ghcr.io/${{ github.repository }}
           tags: |
-            type=raw,value=main,enable={{is_default_branch}}
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=semver,pattern={{version}}
             type=ref,event=branch
             type=ref,event=tag
-            type=sha,prefix=sha-,format=long
 
-      - name: Build and push artifact image
+      - name: Build and push public image
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: Dockerfile.ci
-          target: artifact
-          platforms: linux/arm64
+          file: docker/Dockerfile
+          target: local-runtime
+          platforms: linux/amd64,linux/arm64
           push: true
-          build-args: |
-            TARGET=aarch64-unknown-linux-gnu
-            BIN_NAME=telescrap-sr
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-
-  deploy-on-raspberry:
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev/jfi'
-    needs: publish-artifact-image
-    runs-on:
-      - self-hosted
-      - linux
-      - ARM64
-    permissions:
-      contents: read
-      packages: read
-    env:
-      IMAGE_NAME: ${{ needs.publish-artifact-image.outputs.image_name }}
-      DEPLOY_IMAGE: ${{ needs.publish-artifact-image.outputs.image_name }}:sha-${{ github.sha }}
-      INSTALL_DIR: /home/jfi/telescrap/
-      BINARY_NAME: telescrap-sr
-      SERVICE_NAME: ${{ github.ref == 'refs/heads/main' && 'telescrap@bot3' || 'telescrap@bot2' }}
-    steps:
-      - name: Log in to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Pull artifact image
-        run: docker pull "$DEPLOY_IMAGE"
-
-      - name: Install binary from artifact image
-        run: |
-          mkdir -p "$INSTALL_DIR"
-          container_id=$(docker create "$DEPLOY_IMAGE" "/$BINARY_NAME")
-          trap 'docker rm -f "$container_id" >/dev/null 2>&1 || true' EXIT
-          docker cp "$container_id:/$BINARY_NAME" "$INSTALL_DIR/$BINARY_NAME"
-          chmod 755 "$INSTALL_DIR/$BINARY_NAME"
-
-      - name: Restart service
-        run: |
-          sudo systemctl restart "$SERVICE_NAME"
-          sudo systemctl status "$SERVICE_NAME" --no-pager
+          cache-from: type=gha,scope=telescrap-public-image
+          cache-to: type=gha,mode=max,scope=telescrap-public-image

@@ -13,15 +13,13 @@ Scraping tool to get notification for resale ticket, currently implemented for S
 - [ ] Filter rework to allow 1 passive and mulitple aggressive filters
 - [x] Admin panel to manage the bot (web interface or terminal)
 - [x] config.json to set up the scan and filter configuration by default (and save updated ones from the admin panel).
-- [ ] étendre l'utilisation du bot à discord (en plus de Telegram).
+- [ ] Web app to collect match ticket requests and build a waiting list that the bot can use to automatically add tickets to cart in aggressive mode.
 
 ## Why this project ?
 
-This is a project born from a simple observation. The number of people subscribed to well known rugby clubs is constantly increasing and prevents in its current state any new person who does not follow the matches closely from being able to access tickets. Fortunately, there is a resale platform, which is however itself saturated.
+Rugby club subscriptions are saturated, making it nearly impossible for new fans to get tickets. While resale platforms exist, they're overwhelming and tedious to monitor.
 
-By creating this bot, I wanted to give everyone the opportunity to access tickets for the matches of their favorite club, even if they are not subscribed to the club's news or do not have the time to check the resale platform regularly.
-
-The current ticket resale platforms are not designed to be easily accessible to everyone, and often require a lot of time and effort to find the right tickets. By automating this process, I hope to make it easier for everyone to access tickets for their favorite matches.
+This bot automates the process by continuously scanning for available resale tickets and instantly notifying you via Telegram, so you never miss an opportunity to see your favorite team play.
 
 ## How does it work?
 

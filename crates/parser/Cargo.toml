@@ -9,7 +9,6 @@ path = "src/main.rs"
 
 [dependencies]
 curl = "0.4.49"
-dotenvy = "0.15.7"
 openssl = { version = "0.10", features = ["vendored"] }
 redb = "4.0.0"
 scraper = "0.26.0"
