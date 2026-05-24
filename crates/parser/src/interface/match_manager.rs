@@ -26,6 +26,10 @@ use crate::app::clubs::{
 use crate::interface::curl::web::{WebClient, connect_and_add_to_cart};
 use crate::interface::storage::EncounterStore;
 
+fn matchs_db_path() -> String {
+    std::env::var("MATCHS_DB_PATH").unwrap_or_else(|_| "matchs.db".to_string())
+}
+
 /// Connects to the shop with the given seat information and adds it to the cart.
 pub fn connect_and_add_seat_to_cart(email: String, password: String, seat: Seat) -> Result<(), Box<dyn std::error::Error>> {
     connect_and_add_to_cart(&email, &password, &seat.actions)
@@ -33,7 +37,7 @@ pub fn connect_and_add_seat_to_cart(email: String, password: String, seat: Seat)
 
 /// Prints all encounter records stored in the database.
 pub fn print_db_contents() {
-    let db = match EncounterStore::open("matchs.db") {
+    let db = match EncounterStore::open(matchs_db_path()) {
         Ok(db) => db,
         Err(e) => { eprintln!("Failed to open database: {}", e); return; }
     };
@@ -66,7 +70,7 @@ pub fn print_db_contents() {
 /// 
 pub fn get_seats_from_matches(club: Club, match_type: MatchNature) -> Vec<Encounter> {
     let client = WebClient::new();
-    let db = EncounterStore::open("matchs.db").unwrap();
+    let db = EncounterStore::open(matchs_db_path()).unwrap();
     let matches = get_matches_from_type_and_club(match_type, club);
 
     let matches: Vec<Encounter> = matches.into_iter().map(|mut encounter| {
@@ -101,7 +105,7 @@ pub fn get_seats_from_matches(club: Club, match_type: MatchNature) -> Vec<Encoun
 /// 
 pub fn get_seats_from_match_title(match_title: String, club: Club, match_type: MatchNature) -> Vec<Encounter> {
     let client = WebClient::new();
-    let db = EncounterStore::open("matchs.db").unwrap();
+    let db = EncounterStore::open(matchs_db_path()).unwrap();
 
     // Get all occurence from data base
     match db.get_all() {

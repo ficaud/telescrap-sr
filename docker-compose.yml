@@ -12,10 +12,11 @@ services:
       - SHOP_PASSWORD=${SHOP_PASSWORD}
       - RUST_LOG=${RUST_LOG:-info}
       - INSTANCE_ID=scanner-1
+      - MATCHS_DB_PATH=/app/data/matchs.db
     env_file:
       - .env
     volumes:
-      - scanner-1-data:/app/data
+      - ./data/scanner-1:/app/data
     restart: unless-stopped
 
   # Scanner Instance 2 - Port 3001
@@ -31,10 +32,11 @@ services:
       - SHOP_PASSWORD=${SHOP_PASSWORD}
       - RUST_LOG=${RUST_LOG:-info}
       - INSTANCE_ID=scanner-2
+      - MATCHS_DB_PATH=/app/data/matchs.db
     env_file:
       - .env
     volumes:
-      - scanner-2-data:/app/data
+      - ./data/scanner-2:/app/data
     restart: unless-stopped
 
 volumes:
