@@ -1,0 +1,176 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump_type:
+        description: Version bump type
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+        default: patch
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+  BIN_NAME: telescrap-sr
+
+jobs:
+  prepare-release:
+    name: Prepare Release
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.new_version.outputs.version }}
+      tag: ${{ steps.new_version.outputs.tag }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get latest tag
+        id: latest_tag
+        shell: bash
+        run: |
+          latest_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          version="${latest_tag#v}"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "Latest version: ${version}"
+
+      - name: Calculate new version
+        id: new_version
+        shell: bash
+        env:
+          CURRENT: ${{ steps.latest_tag.outputs.version }}
+          BUMP_TYPE: ${{ github.event.inputs.bump_type }}
+        run: |
+          IFS='.' read -r major minor patch <<< "$CURRENT"
+
+          case "$BUMP_TYPE" in
+            major)
+              major=$((major + 1))
+              minor=0
+              patch=0
+              ;;
+            minor)
+              minor=$((minor + 1))
+              patch=0
+              ;;
+            patch)
+              patch=$((patch + 1))
+              ;;
+          esac
+
+          new_version="${major}.${minor}.${patch}"
+          echo "version=${new_version}" >> "$GITHUB_OUTPUT"
+          echo "tag=v${new_version}" >> "$GITHUB_OUTPUT"
+          echo "New version: ${new_version}"
+
+      - name: Create and push tag
+        env:
+          TAG: ${{ steps.new_version.outputs.tag }}
+        run: |
+          git tag "$TAG"
+          git push origin "$TAG"
+
+      - name: Create draft release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.new_version.outputs.tag }}
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release ${TAG} already exists"
+          else
+            gh release create "$TAG" \
+              --draft \
+              --title "$TAG" \
+              --notes ""
+          fi
+
+  build-binaries:
+    name: Build Binary (${{ matrix.target }})
+    needs: prepare-release
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            artifact_name: telescrap-sr-linux-amd64
+          - target: aarch64-unknown-linux-gnu
+            artifact_name: telescrap-sr-linux-arm64
+    steps:
+      - name: Checkout code at release tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare-release.outputs.tag }}
+
+      - name: Install Zig
+        uses: mlugg/setup-zig@v2
+
+      - name: Install cargo-zigbuild
+        run: cargo install cargo-zigbuild --locked
+
+      - name: Add Rust target
+        run: rustup target add ${{ matrix.target }}
+
+      - name: Build release binary
+        run: cargo zigbuild --release --target ${{ matrix.target }}
+
+      - name: Package binary
+        shell: bash
+        env:
+          TARGET: ${{ matrix.target }}
+          ARTIFACT_NAME: ${{ matrix.artifact_name }}
+          VERSION: ${{ needs.prepare-release.outputs.version }}
+          BIN_NAME: ${{ env.BIN_NAME }}
+        run: |
+          mkdir -p dist
+          cp "target/${TARGET}/release/${BIN_NAME}" "dist/${BIN_NAME}"
+          chmod +x "dist/${BIN_NAME}"
+          tar -C dist -czf "${ARTIFACT_NAME}-v${VERSION}.tar.gz" "${BIN_NAME}"
+
+      - name: Upload binary to GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.prepare-release.outputs.tag }}
+          VERSION: ${{ needs.prepare-release.outputs.version }}
+          ARTIFACT_NAME: ${{ matrix.artifact_name }}
+        run: |
+          gh release upload "$TAG" "${ARTIFACT_NAME}-v${VERSION}.tar.gz" --clobber
+
+  publish-release:
+    name: Publish Release
+    needs:
+      - prepare-release
+      - build-binaries
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate release notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ needs.prepare-release.outputs.tag }}
+        run: |
+          gh api \
+            --method POST \
+            "repos/${GITHUB_REPOSITORY}/releases/generate-notes" \
+            -f tag_name="$TAG" > "$RUNNER_TEMP/release-notes.json"
+          jq -r .body "$RUNNER_TEMP/release-notes.json" > "$RUNNER_TEMP/release-notes.md"
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ needs.prepare-release.outputs.tag }}
+        run: |
+          gh release edit "$TAG" \
+            --draft=false \
+            --latest \
+            --notes-file "$RUNNER_TEMP/release-notes.md" \
+            --title "$TAG"
