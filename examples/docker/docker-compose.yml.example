@@ -1,0 +1,51 @@
+services:
+  # Scanner Instance 1 - Port 3000
+  scanner-1:
+    image: ${DOCKER_IMAGE:-ghcr.io/ficaud/telescrap-sr:latest}
+    container_name: telescrap-scanner-1
+    ports:
+      - "3000:3000"
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN_SCANNER_1}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID_SCANNER_1}
+      - ADMIN_PANEL_PORT=3000
+      - SHOP_EMAIL=${SHOP_EMAIL}
+      - SHOP_PASSWORD=${SHOP_PASSWORD}
+      - RUST_LOG=${RUST_LOG:-info}
+      - INSTANCE_ID=scanner-1
+      - MATCHS_DB_PATH=/app/data/matchs.db
+    env_file:
+      - .env
+    volumes:
+      - ./data/scanner-1:/app/data
+    restart: unless-stopped
+
+  # Scanner Instance 2 - Port 3001
+  scanner-2:
+    image: ${DOCKER_IMAGE:-ghcr.io/ficaud/telescrap-sr:latest}
+    container_name: telescrap-scanner-2
+    ports:
+      - "3001:3001"
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN_SCANNER_2}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID_SCANNER_2}
+      - ADMIN_PANEL_PORT=3001
+      - SHOP_EMAIL=${SHOP_EMAIL}
+      - SHOP_PASSWORD=${SHOP_PASSWORD}
+      - RUST_LOG=${RUST_LOG:-info}
+      - INSTANCE_ID=scanner-2
+      - MATCHS_DB_PATH=/app/data/matchs.db
+    env_file:
+      - .env
+    volumes:
+      - ./data/scanner-2:/app/data
+    restart: unless-stopped
+
+volumes:
+  scanner-1-data:
+  scanner-2-data:
+
+networks:
+  default:
+    name: telescrap-network
+    driver: bridge
