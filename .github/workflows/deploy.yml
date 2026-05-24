@@ -21,7 +21,7 @@ permissions:
 
 jobs:
   publish-public-image:
-    runs-on: ${{ github.event_name == 'workflow_dispatch' && inputs.runner == 'self-hosted-arm64' && fromJSON('["self-hosted", "linux", "arm64"]') || 'ubuntu-latest' }}
+    runs-on: ${{ github.event_name == 'workflow_dispatch' && inputs.runner == 'self-hosted' && fromJSON('["self-hosted", "macOS", "ARM64"]') || 'ubuntu-latest' }}
     permissions:
       contents: read
       packages: write
