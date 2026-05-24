@@ -1,0 +1,25 @@
+{
+    "mode": "Passive",
+    "interval": 60,
+    "club": "StadeRochelais",
+    "nature": "Rugby",
+    "is_preview": true,
+    "filter_chain": [
+        {
+            "type": "Encounter",
+            "name": ""
+        },
+        {
+            "type": "Price",
+            "min": 10.0,
+            "max": 50.0
+        },
+        {
+            "type": "Seat",
+            "category": null,
+            "bloc": null,
+            "row": null,
+            "min_consecutive": 2
+        }
+    ]
+}
