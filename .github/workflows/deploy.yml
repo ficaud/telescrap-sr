@@ -4,6 +4,16 @@ on:
     branches: [ main, dev/jfi ]
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      runner:
+        description: Choose the runner for a manual execution
+        required: true
+        default: ubuntu-latest
+        type: choice
+        options:
+          - ubuntu-latest
+          - self-hosted
 
 permissions:
   contents: read
@@ -11,7 +21,7 @@ permissions:
 
 jobs:
   publish-public-image:
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event_name == 'workflow_dispatch' && inputs.runner == 'self-hosted-arm64' && fromJSON('["self-hosted", "linux", "arm64"]') || 'ubuntu-latest' }}
     permissions:
       contents: read
       packages: write
