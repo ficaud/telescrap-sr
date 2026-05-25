@@ -10,3 +10,4 @@ parser = { path = "../parser" }
 scanner = { path = "../scanner" }
 serde = { version = "1.0.228", features = ["derive"] }
 tokio = { version = "1.51.1", features = ["full"] }
+tower-http = { version = "0.6.2", features = ["fs"] }

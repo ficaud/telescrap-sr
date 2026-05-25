@@ -3,7 +3,7 @@ use axum::{
     Router,
     extract::State,
     response::Html,
-    routing::{get, post},
+    routing::{get, get_service, post},
 };
 use filter::filter::filter_chain::FilterChain;
 use filter::filter::config::{
@@ -17,6 +17,7 @@ use serde::Deserialize;
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tokio::sync::watch;
+use tower_http::services::ServeDir;
 
 const INDEX_HTML: &str = include_str!("pages/index.html");
 const CONFIG_UPDATED_HTML: &str = include_str!("pages/config_updated.html");
@@ -190,9 +191,12 @@ pub async fn run(config_tx: watch::Sender<ScanConfig>) {
         .and_then(|v| v.parse::<u16>().ok())
         .unwrap_or(3000);
 
+    let static_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/interface/static");
+
     let app = Router::new()
         .route("/", get(index))
         .route("/config", post(update_config))
+        .nest_service("/static", get_service(ServeDir::new(static_dir)))
         .with_state(state);
 
     let bind_addr = format!("0.0.0.0:{}", port);
