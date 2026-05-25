@@ -45,6 +45,9 @@ WORKDIR /app
 # Copy the built binary from builder
 COPY --from=builder /app/target/release/telescrap-sr /usr/local/bin/telescrap-sr
 
+# Copy admin-panel static assets (favicon, images, etc.) at the path expected by ServeDir
+COPY --from=builder /app/crates/admin-panel/src/interface/static /app/crates/admin-panel/src/interface/static
+
 # Copy entrypoint script
 COPY --chown=telescrap:telescrap docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
