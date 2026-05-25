@@ -21,6 +21,7 @@ use tower_http::services::ServeDir;
 
 const INDEX_HTML: &str = include_str!("pages/index.html");
 const CONFIG_UPDATED_HTML: &str = include_str!("pages/config_updated.html");
+const ROOT_CARGO_TOML: &str = include_str!("../../../../Cargo.toml");
 
 #[derive(Clone)]
 struct AppState {
@@ -50,6 +51,34 @@ struct ScanConfigForm {
     is_preview: Option<String>,
 }
 
+fn extract_root_app_version() -> String {
+    let mut in_package_section = false;
+
+    for line in ROOT_CARGO_TOML.lines() {
+        let trimmed = line.trim();
+
+        if trimmed == "[package]" {
+            in_package_section = true;
+            continue;
+        }
+
+        if in_package_section && trimmed.starts_with('[') {
+            break;
+        }
+
+        if in_package_section && trimmed.starts_with("version") {
+            if let Some((_, value)) = trimmed.split_once('=') {
+                let version = value.trim().trim_matches('"');
+                if !version.is_empty() {
+                    return version.to_string();
+                }
+            }
+        }
+    }
+
+    "unknown".to_string()
+}
+
 
 /// Renders the admin page with the current scanner configuration pre-filled in the form.
 ///
@@ -62,6 +91,7 @@ struct ScanConfigForm {
 /// with current configuration values.
 async fn index(State(state): State<AppState>) -> Html<String> {
     let config = state.config_tx.borrow();
+    let app_version = extract_root_app_version();
     let interval = config.interval;
 
     let sel_passive    = if config.mode == ScanMode::PassiveScan    { "selected" } else { "" };
@@ -94,7 +124,8 @@ async fn index(State(state): State<AppState>) -> Html<String> {
         .replace("{seat_row}", &seat_row)
         .replace("{side_by_side}", &side_by_side)
         .replace("{match_title}", &match_title)
-        .replace("{chk_preview}", chk_preview);
+        .replace("{chk_preview}", chk_preview)
+        .replace("{app_version}", &app_version);
 
     Html(html)
 }
