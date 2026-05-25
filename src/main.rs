@@ -9,6 +9,7 @@ use parser::{
     interface::storage::EncounterStore,
 };
 use scanner::{controller::notify::Notify, core::scan};
+use scanner::core::app_state::AppState;
 use scanner::interface::runner::ScannerHandle;
 use telegram_notifier::TelegramNotifier;
 use tokio::sync::watch;
@@ -37,13 +38,15 @@ async fn main() {
     // ------- Step 2 : Create the watch channel -------
     // Create the watch channel — config_tx allows sending config updates at runtime
     let (config_tx, config_rx) = watch::channel(scan_config);
+     // Channel for sharing scanner state with admin panel
+    let (state_tx, state_rx) = watch::channel(AppState::Running);
 
 
     // ------- Step 3 : Start scanner and admin panel task -------
     // Start the scanner with the config receiver and notifier
-    let _handle = ScannerHandle::start(config_rx, notifier);
-    // Start the admin panel web server in a separate task (owns config_tx)
-    tokio::spawn(admin_panel::run(config_tx));
+    let _handle = ScannerHandle::start(config_rx, notifier, state_rx);
+    // Start the admin panel web server in a separate task (owns config_tx and state_tx)
+    tokio::spawn(admin_panel::run_with_state(config_tx, Some(state_tx)));
 
     // ------- Step 4 : Wait for shutdown signal (Ctrl+C) -------
     tokio::signal::ctrl_c().await.unwrap();

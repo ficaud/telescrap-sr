@@ -10,6 +10,7 @@ use tokio::time::{interval, Duration};
 use crate::{
     app::diff::{diff, DiffType},
     controller::notify::Notify,
+    core::app_state::AppState,
     core::scan::{ScanConfig, ScanMode, ScanResult},
 };
 
@@ -21,6 +22,7 @@ pub struct ScanTask<N: Notify> {
     config_rx: watch::Receiver<ScanConfig>,
     notifier: N,
     previous: Option<ScanResult>,
+    state_rx: watch::Receiver<AppState>,
 }
 
 impl<N: Notify> ScanTask<N> {
@@ -32,9 +34,9 @@ impl<N: Notify> ScanTask<N> {
     ///
     /// # Returns
     /// A new instance of `ScanTask` initialized with the provided configuration and notifier.
-    pub fn new(mut config_rx: watch::Receiver<ScanConfig>, notifier: N) -> Self {
+    pub fn new(mut config_rx: watch::Receiver<ScanConfig>, notifier: N, state_rx: watch::Receiver<AppState>) -> Self {
         let config = config_rx.borrow_and_update().clone();
-        Self { config, config_rx, notifier, previous: None }
+        Self { config, config_rx, notifier, previous: None, state_rx }
     }
 
     /// Runs the scan task, periodically checking for changes in encounters, applying filters,
@@ -54,7 +56,20 @@ impl<N: Notify> ScanTask<N> {
                     println!("⚙️  Configuration mise à jour, redémarrage du cycle");
                     continue;
                 }
+
+                result = self.state_rx.changed() => {
+                    if result.is_err() {
+                        break; // sender dropped (shutdown), exit cleanly
+                    }
+                    println!("🔄 État de l'application changé : {:?}", *self.state_rx.borrow());
+                    continue;
+                }
             }
+
+            if *self.state_rx.borrow() == AppState::Stopped {
+                continue;
+            }
+
             // variable that will be used to measure the duration of the scan process
             let scan_start = std::time::Instant::now();
             // Fetch current encounters from the match manager in a blocking task to avoid blocking the async runtime
@@ -71,52 +86,52 @@ impl<N: Notify> ScanTask<N> {
             .await
             .unwrap();
 
-        // Compare with previous results to detect changes (new seats)
-        let changed: Vec<Encounter> = if let Some(prev) = &self.previous {
-            diff(&prev.encounters, &scan_result.encounters)
-                .into_iter()
-                .filter(|r| r.diff_type == DiffType::NewSeats)
-                .map(|r| r.encounter_diff_only)
-                .collect()
-        } else {
-            // First iteration: treat available seats as new
-            scan_result.encounters.iter()
-                .filter(|e| e.seats.as_ref().map_or(false, |s| !s.is_empty()))
-                .cloned()
-                .collect()
-        };
-        
-        // Apply the filter chain from config (built by admin panel)
-        let result = if let Some(chain) = &self.config.filter_chain {
-            chain.apply(&changed)
-        } else {
-            changed
-        };
+            // Compare with previous results to detect changes (new seats)
+            let changed: Vec<Encounter> = if let Some(prev) = &self.previous {
+                diff(&prev.encounters, &scan_result.encounters)
+                    .into_iter()
+                    .filter(|r| r.diff_type == DiffType::NewSeats)
+                    .map(|r| r.encounter_diff_only)
+                    .collect()
+            } else {
+                // First iteration: treat available seats as new
+                scan_result.encounters.iter()
+                    .filter(|e| e.seats.as_ref().map_or(false, |s| !s.is_empty()))
+                    .cloned()
+                    .collect()
+            };
 
-        // Load seat preview images if enabled
-        let mut result = result;
-        if self.config.is_preview {
-            for encounter in &mut result {
-                if let Some(seats) = &mut encounter.seats {
-                    for seat in seats.iter_mut() {
-                        seat.seat_info.preview_url = match_manager::get_seat_preview(
-                            &self.config.club,
-                            &seat.seat_info.composition,
-                        );
+            // Apply the filter chain from config (built by admin panel)
+            let result = if let Some(chain) = &self.config.filter_chain {
+                chain.apply(&changed)
+            } else {
+                changed
+            };
+
+            // Load seat preview images if enabled
+            let mut result = result;
+            if self.config.is_preview {
+                for encounter in &mut result {
+                    if let Some(seats) = &mut encounter.seats {
+                        for seat in seats.iter_mut() {
+                            seat.seat_info.preview_url = match_manager::get_seat_preview(
+                                &self.config.club,
+                                &seat.seat_info.composition,
+                            );
+                        }
                     }
                 }
             }
-        }
 
-        // In aggressive mode, attempt to add detected seats to the basket on the ticketing website.
-        let basket_successes = if self.config.mode == ScanMode::AggressiveScan {
-            self.try_aggressive_add_to_basket(&result)
-        } else {
-            0
-        };
+            // In aggressive mode, attempt to add detected seats to the basket on the ticketing website.
+            let basket_successes = if self.config.mode == ScanMode::AggressiveScan {
+                self.try_aggressive_add_to_basket(&result)
+            } else {
+                0
+            };
 
-        // Calculate elapsed time and send notifications if there are changes, otherwise log that no change was detected
-        if !result.is_empty() {
+            // Calculate elapsed time and send notifications if there are changes, otherwise log that no change was detected
+            if !result.is_empty() {
                 let elapsed = scan_start.elapsed();
                 println!("⚠️  {} changement(s) détecté(s) ({:.2?})", result.len(), elapsed);
                 dbg!(&result);
