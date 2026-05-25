@@ -137,7 +137,7 @@
             <p class="section-title">⚙️ Configuration du scan</p>
 
             <div class="scan-toggle-wrap">
-                <input type="checkbox" id="scan_toggle" class="scan-toggle-state">
+                <input type="checkbox" id="scan_toggle" class="scan-toggle-state" {chk_scan_toggle}>
                 <label for="scan_toggle" class="scan-toggle-btn" aria-label="Play or pause scan">
                     <span class="icon play">▶</span>
                     <span class="icon pause">⏸</span>
@@ -227,5 +227,48 @@
 
         <button type="submit">Appliquer</button>
     </form>
+
+    <script>
+        (function () {
+            var toggle = document.getElementById("scan_toggle");
+            if (!toggle) return;
+
+            var isSyncing = false;
+
+            async function pushState(checked) {
+                var previous = !checked;
+                var nextState = checked ? "stopped" : "running";
+
+                if (isSyncing) return;
+                isSyncing = true;
+                toggle.disabled = true;
+
+                try {
+                    var body = new URLSearchParams({ state: nextState }).toString();
+                    var response = await fetch("/state", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"
+                        },
+                        body: body
+                    });
+
+                    if (!response.ok) {
+                        throw new Error("State update failed");
+                    }
+                } catch (_) {
+                    toggle.checked = previous;
+                    alert("Impossible de changer l'etat du scan.");
+                } finally {
+                    toggle.disabled = false;
+                    isSyncing = false;
+                }
+            }
+
+            toggle.addEventListener("change", function (event) {
+                pushState(event.target.checked);
+            });
+        })();
+    </script>
 </body>
 </html>

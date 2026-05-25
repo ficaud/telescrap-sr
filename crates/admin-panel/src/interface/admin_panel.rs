@@ -12,6 +12,7 @@ use filter::filter::config::{
     seat::SeatPositionFilter,
 };
 use parser::core::encounter::MatchNature;
+use scanner::core::app_state::AppState as ScannerAppState;
 use scanner::core::scan::{ScanConfig, ScanMode};
 use serde::Deserialize;
 use std::sync::Arc;
@@ -26,6 +27,7 @@ const ROOT_CARGO_TOML: &str = include_str!("../../../../Cargo.toml");
 #[derive(Clone)]
 struct AppState {
     config_tx: Arc<watch::Sender<ScanConfig>>,
+    state_tx: Option<Arc<watch::Sender<ScannerAppState>>>,
 }
 
 #[derive(Deserialize)]
@@ -49,6 +51,11 @@ struct ScanConfigForm {
     match_title: Option<String>,
     #[serde(default)]
     is_preview: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct ScanStateForm {
+    state: String,
 }
 
 fn extract_root_app_version() -> String {
@@ -93,6 +100,16 @@ async fn index(State(state): State<AppState>) -> Html<String> {
     let config = state.config_tx.borrow();
     let app_version = extract_root_app_version();
     let interval = config.interval;
+    let chk_scan_toggle = if state
+        .state_tx
+        .as_ref()
+        .map(|tx| *tx.borrow() == ScannerAppState::Stopped)
+        .unwrap_or(false)
+    {
+        "checked"
+    } else {
+        ""
+    };
 
     let sel_passive    = if config.mode == ScanMode::PassiveScan    { "selected" } else { "" };
     let sel_aggressive = if config.mode == ScanMode::AggressiveScan { "selected" } else { "" };
@@ -125,6 +142,7 @@ async fn index(State(state): State<AppState>) -> Html<String> {
         .replace("{side_by_side}", &side_by_side)
         .replace("{match_title}", &match_title)
         .replace("{chk_preview}", chk_preview)
+        .replace("{chk_scan_toggle}", chk_scan_toggle)
         .replace("{app_version}", &app_version);
 
     Html(html)
@@ -205,6 +223,27 @@ async fn update_config(
     Html(CONFIG_UPDATED_HTML.to_string())
 }
 
+async fn update_state(
+    State(state): State<AppState>,
+    Form(form): Form<ScanStateForm>,
+) -> Html<String> {
+    let Some(state_tx) = &state.state_tx else {
+        return Html("State channel not configured".to_string());
+    };
+
+    let next_state = match form.state.trim().to_ascii_lowercase().as_str() {
+        "running" | "run" | "play" | "resume" => ScannerAppState::Running,
+        "stopped" | "stop" | "pause" => ScannerAppState::Stopped,
+        _ => return Html("Invalid state. Use running or stopped".to_string()),
+    };
+
+    if state_tx.send(next_state).is_err() {
+        return Html("Failed to propagate state".to_string());
+    }
+
+    Html(format!("State updated: {:?}", next_state))
+}
+
 /// Starts the admin panel web server, allowing runtime configuration of the scanner through a web interface.
 /// The server listens on the port provided by `ADMIN_PANEL_PORT` (default: `3000`) and
 /// provides endpoints for viewing the current configuration and updating it through a form submission.
@@ -215,7 +254,17 @@ async fn update_config(
 /// # Returns
 /// This function runs indefinitely, serving the admin panel until the application is terminated.
 pub async fn run(config_tx: watch::Sender<ScanConfig>) {
-    let state = AppState { config_tx: Arc::new(config_tx) };
+    run_with_state(config_tx, None).await;
+}
+
+pub async fn run_with_state(
+    config_tx: watch::Sender<ScanConfig>,
+    state_tx: Option<watch::Sender<ScannerAppState>>,
+) {
+    let state = AppState {
+        config_tx: Arc::new(config_tx),
+        state_tx: state_tx.map(Arc::new),
+    };
 
     let port = std::env::var("ADMIN_PANEL_PORT")
         .ok()
@@ -227,6 +276,7 @@ pub async fn run(config_tx: watch::Sender<ScanConfig>) {
     let app = Router::new()
         .route("/", get(index))
         .route("/config", post(update_config))
+        .route("/state", post(update_state))
         .nest_service("/static", get_service(ServeDir::new(static_dir)))
         .with_state(state);
 
