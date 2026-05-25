@@ -51,6 +51,81 @@
             border-radius: 999px;
             padding: 4px 10px;
         }
+        .scan-toggle-wrap {
+            position: relative;
+            z-index: 30;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            margin: 4px 0 16px 0;
+        }
+        .scan-toggle-state {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+        .scan-toggle-btn {
+            position: relative;
+            z-index: 40;
+            width: 70px;
+            height: 44px;
+            border-radius: 14px;
+            background: #0078d4;
+            border: 1px solid #00508b;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background 0.2s ease;
+            user-select: none;
+        }
+        .scan-toggle-btn:hover {
+            background: #005fa3;
+        }
+        .scan-toggle-btn .icon {
+            font-size: 1.1rem;
+            color: #fff;
+            line-height: 1;
+        }
+        .scan-toggle-btn .pause {
+            display: none;
+        }
+        .scan-toggle-state:checked + .scan-toggle-btn {
+            background: #ff3b30;
+            border-color: #b40000;
+        }
+        .scan-toggle-state:checked + .scan-toggle-btn .play {
+            display: none;
+        }
+        .scan-toggle-state:checked + .scan-toggle-btn .pause {
+            display: inline;
+        }
+        .scan-toggle-label {
+            position: relative;
+            z-index: 40;
+            font-size: 0.72rem;
+            color: #4b5563;
+            font-weight: 500;
+            letter-spacing: 0.01em;
+            line-height: 1;
+        }
+        .ui-lock-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(230, 230, 230, 0.62);
+            backdrop-filter: grayscale(1) saturate(0.2);
+            opacity: 0;
+            pointer-events: none;
+            z-index: 20;
+            transition: opacity 0.2s ease;
+        }
+        .scan-toggle-state:checked ~ .ui-lock-overlay {
+            opacity: 1;
+            pointer-events: auto;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 <body>
@@ -60,6 +135,16 @@
         <!-- Section 1 : Configuration du scan -->
         <div class="section">
             <p class="section-title">⚙️ Configuration du scan</p>
+
+            <div class="scan-toggle-wrap">
+                <input type="checkbox" id="scan_toggle" class="scan-toggle-state">
+                <label for="scan_toggle" class="scan-toggle-btn" aria-label="Play or pause scan">
+                    <span class="icon play">▶</span>
+                    <span class="icon pause">⏸</span>
+                </label>
+                <span class="scan-toggle-label">(Pause / Resume scan)</span>
+                <div class="ui-lock-overlay" aria-hidden="true"></div>
+            </div>
 
             <div class="row">
                 <div>
