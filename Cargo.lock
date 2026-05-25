@@ -1889,7 +1889,7 @@ dependencies = [
 
 [[package]]
 name = "telescrap-sr"
-version = "2.1.7"
+version = "2.1.8"
 dependencies = [
  "admin-panel",
  "dotenv",
