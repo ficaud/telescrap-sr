@@ -183,6 +183,7 @@ pub struct ScanConfigRaw {
     pub club: ClubRaw,
     pub nature: NatureRaw,
     pub is_preview: bool,
+    pub proxy_enabled: bool,
     pub filter_chain: Option<Vec<FilterDescriptor>>,
 }
 
@@ -251,6 +252,7 @@ impl TryFrom<ScanConfig> for ScanConfigRaw {
             club,
             nature,
             is_preview: config.is_preview,
+            proxy_enabled: config.proxy_enabled,
             filter_chain: filter_chain,
         })
     }
@@ -318,6 +320,7 @@ impl TryFrom<ScanConfigRaw> for ScanConfig {
             club,
             nature,
             is_preview: raw.is_preview,
+            proxy_enabled: raw.proxy_enabled,
             filter_chain,
         })
     }

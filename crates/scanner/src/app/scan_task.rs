@@ -2,6 +2,7 @@
 use parser::core::encounter::Encounter;
 /// This module defines the `ScanTask` struct and its associated logic for performing periodic scans of encounters,
 /// applying filters, and notifying about changes in available seats.
+use parser::interface::curl::proxy::set_proxy_enabled;
 use parser::interface::match_manager;
 use filter::filter::Filter;
 use std::panic::{AssertUnwindSafe, catch_unwind};
@@ -36,6 +37,7 @@ impl<N: Notify> ScanTask<N> {
     /// A new instance of `ScanTask` initialized with the provided configuration and notifier.
     pub fn new(mut config_rx: watch::Receiver<ScanConfig>, notifier: N, state_rx: watch::Receiver<AppState>) -> Self {
         let config = config_rx.borrow_and_update().clone();
+        set_proxy_enabled(config.proxy_enabled);
         Self { config, config_rx, notifier, previous: None, state_rx }
     }
 
@@ -51,6 +53,7 @@ impl<N: Notify> ScanTask<N> {
                         break; // sender dropped (shutdown), exit cleanly
                     }
                     self.config = self.config_rx.borrow_and_update().clone();
+                    set_proxy_enabled(self.config.proxy_enabled);
                     self.previous = None;
                     ticker = interval(Duration::from_secs(self.config.interval));
                     println!("⚙️  Configuration mise à jour, redémarrage du cycle");

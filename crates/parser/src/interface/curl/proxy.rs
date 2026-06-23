@@ -1,4 +1,5 @@
 use curl::easy::Easy;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::LazyLock;
 use std::sync::Mutex;
 
@@ -257,6 +258,11 @@ impl ProxyManager {
 /// made.
 pub static PROXY_MANAGER: LazyLock<ProxyManager> = LazyLock::new(ProxyManager::new);
 
+/// Global flag to enable/disable proxy usage at runtime.
+/// Set via `set_proxy_enabled()`. Defaults to `true`.
+pub static PROXY_ENABLED: AtomicBool = AtomicBool::new(true);
+
+
 /// Executes `f` with automatic proxy selection and failover.
 ///
 /// - If the proxy pool is empty (API unavailable), `f(None)` is called
@@ -277,13 +283,24 @@ pub static PROXY_MANAGER: LazyLock<ProxyManager> = LazyLock::new(ProxyManager::n
 ///     Ok(result)
 /// })?;
 /// ```
+
+/// Enables or disables proxy usage at runtime.
+/// When disabled, `retry_with_proxy` calls the closure with `None` (direct connection).
+pub fn set_proxy_enabled(enabled: bool) {
+    PROXY_ENABLED.store(enabled, Ordering::Relaxed);
+    if enabled {
+        println!("[PROXY] Proxy usage enabled");
+    } else {
+        println!("[PROXY] Proxy usage disabled — using direct connections");
+    }
+}
+
 pub fn retry_with_proxy<F, T>(mut f: F) -> Result<T, Box<dyn std::error::Error>>
 where
     F: FnMut(Option<&str>) -> Result<T, Box<dyn std::error::Error>>,
 {
-    // Attempt to fetch proxies. If the pool is empty (API unavailable),
-    // call the closure once without a proxy.
-    if PROXY_MANAGER.total_count() == 0 {
+    // If proxy usage is disabled, skip directly to no-proxy call.
+    if !PROXY_ENABLED.load(Ordering::Relaxed) || PROXY_MANAGER.total_count() == 0 {
         return f(None);
     }
 
