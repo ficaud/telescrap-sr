@@ -1,11 +1,9 @@
-/// This module defines the WebClient struct, which provides methods for fetching HTML content.
-/// 
-/// TODO : There is a prototype code that is meant to perform a connexion and add to cart operation on the Stade Rochelais billetterie,
-/// but it is currently not functional and needs to be completed and tested.
-use curl::easy::Easy;
-use curl::easy::List;
+use super::proxy::retry_with_proxy;
 use crate::controller::html_extract::FetchHtml;
 use crate::core::seat::SeatAction;
+use curl::easy::Easy;
+use curl::easy::List;
+use std::time::Duration;
 
 /// WebClient is a struct that implements the FetchHtml trait, allowing it to fetch HTML content from a URL
 pub struct WebClient {
@@ -41,30 +39,37 @@ impl FetchHtml for WebClient {
 }
 
 /// Fetches HTML content from the given URL, optionally using a cookie jar for session management.
-/// 
+///
 /// # Arguments
 /// * `url` - The URL from which to fetch HTML content
 /// * `cookie_jar` - An optional path to a cookie jar file for managing session cookies
 /// # Returns
 /// A Result containing the fetched HTML content as a String, or an error if the fetch operation fails
 fn fetch_html(url: &str, cookie_jar: Option<&str>) -> Result<String, Box<dyn std::error::Error>> {
-    let mut easy = Easy::new();
-    easy.url(url)?;
-    if let Some(jar) = cookie_jar {
-        easy.cookie_file(jar)?;
-        easy.cookie_jar(jar)?;
-    }
-    easy.follow_location(true)?;
-    let mut html = Vec::new();
-    {
-        let mut transfer = easy.transfer();
-        transfer.write_function(|data| {
-            html.extend_from_slice(data);
-            Ok(data.len())
-        })?;
-        transfer.perform()?;
-    }
-    Ok(String::from_utf8(html)?)
+    retry_with_proxy(|proxy| {
+        let mut easy = Easy::new();
+        easy.url(url)?;
+        if let Some(jar) = cookie_jar {
+            easy.cookie_file(jar)?;
+            easy.cookie_jar(jar)?;
+        }
+        if let Some(p) = proxy {
+            easy.proxy(p)?;
+        }
+        easy.connect_timeout(Duration::from_secs(5))?;
+        easy.timeout(Duration::from_secs(15))?;
+        easy.follow_location(true)?;
+        let mut html = Vec::new();
+        {
+            let mut transfer = easy.transfer();
+            transfer.write_function(|data| {
+                html.extend_from_slice(data);
+                Ok(data.len())
+            })?;
+            transfer.perform()?;
+        }
+        Ok(String::from_utf8(html)?)
+    })
 }
 
 pub fn connect_to_shop(

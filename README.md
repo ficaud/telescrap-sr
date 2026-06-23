@@ -40,9 +40,12 @@ You can request access by contacting the project administrator via private messa
   <img src="doc/img/telegram_channel.png" width="100%">
 </picture>
 
-## Github Workflow
+## Web Admin Panel
 
-Current Github workflow (`deploy.yml`) is configured to automatically build and deploy the bot on a server when a new release is published.
+The bot includes a web interface for managing its operations, allowing you to start or stop the bot, configure filters and other settings without needing to modify the configuration file.
+
+Read the [ADMIN_PANEL.md](doc/ADMIN_PANEL.md) documentation for more details about the features of the admin panel and how to use it.
+
 ## See also
 
 - [ARCHITECTURE.md](doc/ARCHITECTURE.md) : for more details about the architecture of the project and the crates organization.
