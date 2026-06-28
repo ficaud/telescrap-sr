@@ -1,5 +1,5 @@
 /// This module manages the retrieval of match and seat information for rugby clubs, as well as interactions with the shopping cart.
-/// 
+///
 /// It provides the main parser functions that should be used in the rest of the application to get matches and seats informations
 use crate::{controller::encounter_store::StoreEncounters, core::{
     club::{
@@ -61,13 +61,13 @@ pub fn print_db_contents() {
 }
 
 /// Fetches encounters with seats for a given club and match nature
-/// 
+///
 /// # Arguments
 /// * `club` - The club to fetch matches for
 /// * `match_type` - The nature of the match to fetch
 /// # Returns
 /// A list of encounters with their seats information populated
-/// 
+///
 pub fn get_seats_from_matches(club: Club, match_type: MatchNature) -> Vec<Encounter> {
     let client = WebClient::new(ProxyMode::Disabled);
     let db = EncounterStore::open(matchs_db_path()).unwrap();
@@ -95,14 +95,14 @@ pub fn get_seats_from_matches(club: Club, match_type: MatchNature) -> Vec<Encoun
 /// Fectes match's seats from a given match title, club and match nature.
 /// It first tries to find an active resale link in the database for the given title, if it finds one it fetches seats from it,
 /// otherwise it falls back to fetching matches from the web and filtering by title.
-/// 
+///
 /// # Arguments
 /// * `match_title` - The title of the match to fetch seats for
 /// * `club` - The club to fetch matches for
 /// * `match_type` - The nature of the match to fetch
 /// # Returns
 /// A list of encounters with their seats information populated (which is 1 if a match with the given title is found, 0 otherwise)
-/// 
+///
 pub fn get_seats_from_match_title(match_title: String, club: Club, match_type: MatchNature) -> Vec<Encounter> {
     // We need rotating proxy here because we are directly fecthing the resale link save in db
     let client = WebClient::new(ProxyMode::Rotating);
@@ -146,7 +146,7 @@ pub fn get_seats_from_match_title(match_title: String, club: Club, match_type: M
 }
 
 /// Internal function to fetch seats for a list of encounters, given a client to fetch HTML content.
-/// 
+///
 /// # Arguments
 /// * `matches` - The list of encounters to retrieve seats for
 /// * `client` - The client to use for fetching HTML content
@@ -167,14 +167,14 @@ fn get_encounters_with_seats(matches: Vec<Encounter>, client: &impl FetchHtml) -
 }
 
 /// Internal function to fetch matches for a given club and client, optionally filtered by match nature.
-/// 
+///
 /// # Arguments
 /// * `club` - The club to fetch matches for
 /// * `client` - The client to use for fetching HTML content
 /// * `match_type` - Optional filter to return only matches of a specific nature
 /// # Returns
 /// A list of encounters matching the specified criteria
-/// 
+///
 fn get_matches(club: &Club, client: &impl FetchHtml, match_type: MatchNature) -> Vec<Encounter> {
 
     // Step 0: Set the correct parser from the club
@@ -209,7 +209,7 @@ fn get_seats(html: &str, encounter: Encounter) -> Vec<Seat> {
 
     parser.parse_seat(html, encounter)
 }
-    
+
 /// Internal function to fetch all match encounters for a given club and match nature
 ///
 /// # Arguments
