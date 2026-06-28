@@ -23,7 +23,7 @@ use crate::app::clubs::{
         parse_seat_preview::LarochellSeatPreviewParser,
     }
 };
-use crate::interface::curl::web::{WebClient, connect_and_add_to_cart};
+use crate::interface::curl::web::{WebClient, connect_and_add_to_cart, ProxyMode};
 use crate::interface::storage::EncounterStore;
 
 fn matchs_db_path() -> String {
@@ -69,7 +69,7 @@ pub fn print_db_contents() {
 /// A list of encounters with their seats information populated
 /// 
 pub fn get_seats_from_matches(club: Club, match_type: MatchNature) -> Vec<Encounter> {
-    let client = WebClient::new();
+    let client = WebClient::new(ProxyMode::Disabled);
     let db = EncounterStore::open(matchs_db_path()).unwrap();
     let matches = get_matches_from_type_and_club(match_type, club);
 
@@ -104,7 +104,8 @@ pub fn get_seats_from_matches(club: Club, match_type: MatchNature) -> Vec<Encoun
 /// A list of encounters with their seats information populated (which is 1 if a match with the given title is found, 0 otherwise)
 /// 
 pub fn get_seats_from_match_title(match_title: String, club: Club, match_type: MatchNature) -> Vec<Encounter> {
-    let client = WebClient::new();
+    // We need rotating proxy here because we are directly fecthing the resale link save in db
+    let client = WebClient::new(ProxyMode::Rotating);
     let db = EncounterStore::open(matchs_db_path()).unwrap();
 
     // Get all occurence from data base
@@ -217,7 +218,7 @@ fn get_seats(html: &str, encounter: Encounter) -> Vec<Seat> {
 /// # Returns
 /// A list of encounters matching the specified criteria
 fn get_matches_from_type_and_club(match_type: MatchNature, club: Club) -> Vec<Encounter> {
-    let client = WebClient::new();
+    let client = WebClient::new(ProxyMode::Rotating);
     get_matches(&club, &client, match_type)
 }
 
