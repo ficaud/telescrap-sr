@@ -71,12 +71,68 @@ pub fn print_db_contents() {
 pub fn get_seats_from_matches(club: Club, match_type: MatchNature) -> Vec<Encounter> {
     let client = WebClient::new(ProxyMode::Disabled);
     let db = EncounterStore::open(matchs_db_path()).unwrap();
+
+    // Priority 1: try cached active resale links from DB first
+    if let Ok(records) = db.get_active_resale_links() {
+        let mut cached_results: Vec<Encounter> = Vec::new();
+
+        for record in &records {
+
+            let encounter = Encounter::new(
+                Club::get_type_from_name(&record.club_type),
+                record.title.clone(),
+                record.date.clone(),
+                match_type,
+                Some(record.resale_link.clone()),
+            );
+
+            let mut with_seats = get_encounters_with_seats(vec![encounter], &client);
+            if let Some(e) = with_seats.first_mut() {
+                let has_seats = e.seats.as_ref().map_or(false, |s| !s.is_empty());
+                if has_seats {
+                    // Cache hit — keep it active and collect
+                    eprintln!(
+                        "[CACHE] Reusing cached resale link for '{}' ({}): {} seats found",
+                        record.title, record.date,
+                        e.seats.as_ref().map_or(0, |s| s.len()),
+                    );
+                    cached_results.extend(with_seats);
+                } else {
+                    // Cache miss — no seats found, mark inactive in DB
+                    eprintln!(
+                        "[CACHE] Disable the cached resale link for '{}' ({}): {} seats found",
+                        record.title, record.date,
+                        e.seats.as_ref().map_or(0, |s| s.len()),
+                    );
+                    // Resale link is stale, mark inactive in DB
+                    let stale = Encounter::new(
+                        Club::get_type_from_name(&record.club_type),
+                        record.title.clone(),
+                        record.date.clone(),
+                        match_type,
+                        None,
+                    );
+                    if let Err(e) = db.upsert(&stale) {
+                        eprintln!("Storage error while marking stale: {}", e);
+                    }
+                }
+            }
+        }
+
+        if !cached_results.is_empty() {
+            return cached_results;
+        }
+    }
+
+    println!("[CACHE] No active resale links found in DB, falling back to web scraping for matches.");
+    // Priority 2: fallback — parse from web (original behavior)
     let matches = get_matches_from_type_and_club(match_type, club);
 
     let matches: Vec<Encounter> = matches.into_iter().map(|mut encounter| {
         // If the page didn't return a resale link, check DB for an existing active one
         if encounter.resale_link.is_none() {
             if let Ok(Some(record)) = db.get_by_stable_id(&encounter.title, &encounter.date) {
+                println!("[DB] Found existing record for '{}' ({}), using cached resale link.", record.title, record.date);
                 if record.resale_active {
                     encounter.resale_link = Some(record.resale_link);
                 }

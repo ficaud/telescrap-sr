@@ -252,7 +252,7 @@ async fn update_state(
 /// Starts the admin panel web server, allowing runtime configuration of the scanner through a web interface.
 /// The server listens on the port provided by `ADMIN_PANEL_PORT` (default: `3000`) and
 /// provides endpoints for viewing the current configuration and updating it through a form submission.
-/// 
+///
 /// # Arguments
 /// * `config_tx` - A `watch::Sender<ScanConfig>` used to broadcast updated scanner configurations to the scanning task when changes are made through the admin panel.
 ///
@@ -287,6 +287,6 @@ pub async fn run_with_state(
 
     let bind_addr = format!("0.0.0.0:{}", port);
     let listener = TcpListener::bind(&bind_addr).await.unwrap();
-    println!("Server as start on http://localhost:{}", port);
+    println!("[TCP] Server as start on http://localhost:{}", port);
     axum::serve(listener, app).await.unwrap();
 }
