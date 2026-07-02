@@ -1,19 +1,19 @@
 name: Build and Publish Docker Image
 on:
   push:
-    branches: [ main, dev/jfi ]
+    branches: [main, dev/jfi]
     tags:
-      - 'v*'
+      - "v*"
   workflow_dispatch:
     inputs:
       runner:
         description: Choose the runner for a manual execution
         required: true
-        default: ubuntu-latest
+        default: self_hosted_macbook
         type: choice
         options:
           - ubuntu-latest
-          - self-hosted
+          - self_hosted_macbook
 
 permissions:
   contents: read
@@ -21,7 +21,8 @@ permissions:
 
 jobs:
   publish-public-image:
-    runs-on: ${{ github.event_name == 'workflow_dispatch' && inputs.runner == 'self-hosted' && fromJSON('["self-hosted", "macOS", "ARM64"]') || 'ubuntu-latest' }}
+    # runs-on: ${{ github.event_name == 'workflow_dispatch' && inputs.runner == 'self-hosted' && fromJSON('["self-hosted", "macOS", "ARM64"]') || 'ubuntu-latest' }}
+    runs-on: ${{ github.event_name == 'workflow_dispatch' && inputs.runner || 'self-hosted' }}
     permissions:
       contents: read
       packages: write
