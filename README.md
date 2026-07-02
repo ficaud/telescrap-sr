@@ -40,6 +40,14 @@ The bot includes a web interface for managing its operations, allowing you to st
 
 Read the [ADMIN_PANEL.md](doc/ADMIN_PANEL.md) documentation for more details about the features of the admin panel and how to use it.
 
+## Tools
+
+### Redb database reader
+
+To read a redb database, compile and use the `db-reader` crate included in the project.
+
+* [Read more about it](doc/DB_READER.md)
+
 ## See also
 
 - [ARCHITECTURE.md](doc/ARCHITECTURE.md) : for more details about the architecture of the project and the crates organization.

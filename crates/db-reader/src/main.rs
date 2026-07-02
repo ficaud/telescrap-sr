@@ -15,18 +15,17 @@ struct EncounterRecord {
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
-    let path = match args.get(1) {
-        Some(p) => p.as_str(),
-        None => {
-            eprintln!("Usage: db-reader <path-to-db>");
-            std::process::exit(1);
-        }
-    };
+    let path = args.get(1)
+        .cloned()
+        .or_else(|| std::env::var("MATCHS_DB_PATH").ok())
+        .unwrap_or_else(|| "matchs.db".to_string());
 
-    let db = match Database::open(path) {
+    let db = match Database::open(&path) {
         Ok(db) => db,
         Err(e) => {
             eprintln!("Failed to open database '{}': {}", path, e);
+            eprintln!();
+            eprintln!("Usage: db-reader [path]  (defaults to MATCHS_DB_PATH or 'matchs.db')");
             std::process::exit(1);
         }
     };
