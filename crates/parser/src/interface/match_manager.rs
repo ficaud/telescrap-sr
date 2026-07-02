@@ -98,22 +98,28 @@ pub fn get_seats_from_matches(club: Club, match_type: MatchNature) -> Vec<Encoun
                     );
                     cached_results.extend(with_seats);
                 } else {
-                    // Cache miss — no seats found, mark inactive in DB
-                    eprintln!(
-                        "[CACHE] Disable the cached resale link for '{}' ({}): {} seats found",
-                        record.title, record.date,
-                        e.seats.as_ref().map_or(0, |s| s.len()),
-                    );
-                    // Resale link is stale, mark inactive in DB
-                    let stale = Encounter::new(
-                        Club::get_type_from_name(&record.club_type),
-                        record.title.clone(),
-                        record.date.clone(),
-                        match_type,
-                        None,
-                    );
-                    if let Err(e) = db.upsert(&stale) {
-                        eprintln!("Storage error while marking stale: {}", e);
+                    // Only mark the link as inactive if the match date has passed.
+                    // If the match is still in the future, keep it active so we retry.
+                    if e.date_passed() {
+                        eprintln!(
+                            "[CACHE] Match '{}' ({}) has passed, disabling cached link",
+                            record.title, record.date,
+                        );
+                        let stale = Encounter::new(
+                            Club::get_type_from_name(&record.club_type),
+                            record.title.clone(),
+                            record.date.clone(),
+                            match_type,
+                            None,
+                        );
+                        if let Err(e) = db.upsert(&stale) {
+                            eprintln!("Storage error while marking stale: {}", e);
+                        }
+                    } else {
+                        eprintln!(
+                            "[CACHE] No seats for '{}' ({}), but match not passed yet — keeping link active",
+                            record.title, record.date,
+                        );
                     }
                 }
             }
