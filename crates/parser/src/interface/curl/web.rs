@@ -1,20 +1,9 @@
-use super::proxy::retry_with_proxy;
+use super::proxy::{retry_with_proxy_mode, ProxyMode};
 use crate::controller::html_extract::FetchHtml;
 use crate::core::seat::SeatAction;
 use curl::easy::Easy;
 use curl::easy::List;
 use std::time::Duration;
-
-/// Contrôle l'utilisation des proxies lors du fetch HTML.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum ProxyMode {
-    /// Pas de proxy — connexion directe.
-    Disabled,
-    /// Rotation round-robin sur la pool (comportement actuel).
-    Rotating,
-    /// Conserve le dernier proxy qui a fonctionné jusqu'à son échec.
-    Sticky,
-}
 
 /// WebClient is a struct that implements the FetchHtml trait, allowing it to fetch HTML content from a URL
 pub struct WebClient {
@@ -30,6 +19,10 @@ impl WebClient {
 
     pub fn with_session(cookie_jar: &str, proxy_mode: ProxyMode) -> Self {
         Self { cookie_jar: Some(cookie_jar.to_string()), proxy_mode }
+    }
+
+    pub fn set_proxy_mode(&mut self, proxy_mode: ProxyMode) {
+        self.proxy_mode = proxy_mode;
     }
 }
 
@@ -58,54 +51,30 @@ impl FetchHtml for WebClient {
 /// # Returns
 /// A Result containing the fetched HTML content as a String, or an error if the fetch operation fails
 fn fetch_html(url: &str, cookie_jar: Option<&str>, proxy_mode: ProxyMode) -> Result<String, Box<dyn std::error::Error>> {
-    match proxy_mode {
-        ProxyMode::Disabled => {
-            let mut easy = Easy::new();
-            easy.url(url)?;
-            if let Some(jar) = cookie_jar {
-                easy.cookie_file(jar)?;
-                easy.cookie_jar(jar)?;
-            }
-            easy.connect_timeout(Duration::from_secs(5))?;
-            easy.timeout(Duration::from_secs(15))?;
-            easy.follow_location(true)?;
-            let mut html = Vec::new();
-            {
-                let mut transfer = easy.transfer();
-                transfer.write_function(|data| {
-                    html.extend_from_slice(data);
-                    Ok(data.len())
-                })?;
-                transfer.perform()?;
-            }
-            Ok(String::from_utf8(html)?)
+    retry_with_proxy_mode(|proxy| {
+        let mut easy = Easy::new();
+        easy.url(url)?;
+        if let Some(jar) = cookie_jar {
+            easy.cookie_file(jar)?;
+            easy.cookie_jar(jar)?;
         }
-        ProxyMode::Rotating => retry_with_proxy(|proxy| {
-            let mut easy = Easy::new();
-            easy.url(url)?;
-            if let Some(jar) = cookie_jar {
-                easy.cookie_file(jar)?;
-                easy.cookie_jar(jar)?;
-            }
-            if let Some(p) = proxy {
-                easy.proxy(p)?;
-            }
-            easy.connect_timeout(Duration::from_secs(5))?;
-            easy.timeout(Duration::from_secs(15))?;
-            easy.follow_location(true)?;
-            let mut html = Vec::new();
-            {
-                let mut transfer = easy.transfer();
-                transfer.write_function(|data| {
-                    html.extend_from_slice(data);
-                    Ok(data.len())
-                })?;
-                transfer.perform()?;
-            }
-            Ok(String::from_utf8(html)?)
-        }),
-        ProxyMode::Sticky => Err("Sticky proxy mode not implemented yet".into()),
-    }
+        if let Some(p) = proxy {
+            easy.proxy(p)?;
+        }
+        easy.connect_timeout(Duration::from_secs(5))?;
+        easy.timeout(Duration::from_secs(15))?;
+        easy.follow_location(true)?;
+        let mut html = Vec::new();
+        {
+            let mut transfer = easy.transfer();
+            transfer.write_function(|data| {
+                html.extend_from_slice(data);
+                Ok(data.len())
+            })?;
+            transfer.perform()?;
+        }
+        Ok(String::from_utf8(html)?)
+    }, proxy_mode)
 }
 
 pub fn connect_to_shop(
