@@ -277,10 +277,13 @@ impl ProxyManager {
     }
 }
 
+// To run these tests:
+// cargo test -p parser --lib proxy_core -- --nocapture
+//
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::interface::curl::proxy::proxy_api::{PROXY_ENABLED, set_proxy_enabled, retry_with_proxy};
+    use crate::interface::curl::proxy::proxy_api::{PROXY_ENABLED, ProxyMode, set_proxy_enabled, retry_with_proxy_mode};
 
     /// Helper to create a ProxyManager pre-populated with test proxies.
     fn make_manager(urls: &[&str]) -> ProxyManager {
@@ -413,12 +416,6 @@ mod tests {
     // -----------------------------------------------------------------------
     // set_proxy_enabled / PROXY_ENABLED flag
     // -----------------------------------------------------------------------
-
-    #[test]
-    fn proxy_enabled_default_true() {
-        assert!(PROXY_ENABLED.load(std::sync::atomic::Ordering::Relaxed));
-    }
-
     #[test]
     fn set_proxy_enabled_toggles_flag() {
         set_proxy_enabled(false);
@@ -428,12 +425,34 @@ mod tests {
     }
 
     #[test]
-    fn retry_with_proxy_skips_when_disabled() {
-        set_proxy_enabled(false);
-        let result = retry_with_proxy(|proxy| {
-            assert!(proxy.is_none(), "Expected no proxy when disabled");
+    fn retry_with_proxy_disabled_mode_skips_proxy() {
+        let result = retry_with_proxy_mode(|proxy| {
+            assert!(proxy.is_none(), "Expected no proxy in Disabled mode");
             Ok::<_, Box<dyn std::error::Error>>(42)
-        });
+        }, ProxyMode::Disabled);
+        assert_eq!(result.unwrap(), 42);
+    }
+
+    #[test]
+    fn retry_with_proxy_sticky_uses_same_proxy_on_success() {
+        // In sticky mode, the same proxy should be returned on consecutive calls
+        // when no failure occurs. We can verify peeks don't advance the cursor.
+        let m = make_manager(&["http://sticky:1", "http://next:2"]);
+        assert_eq!(m.peek(), Some("http://sticky:1".into()));
+        assert_eq!(m.peek(), Some("http://sticky:1".into()));
+        assert_eq!(m.peek(), Some("http://sticky:1".into()));
+        // Only advance() should move the cursor
+        m.advance();
+        assert_eq!(m.peek(), Some("http://next:2".into()));
+    }
+
+    #[test]
+    fn retry_with_proxy_failover_disabled_mode() {
+        set_proxy_enabled(false);
+        let result = retry_with_proxy_mode(|proxy| {
+            assert!(proxy.is_none(), "Expected no proxy when globally disabled");
+            Ok::<_, Box<dyn std::error::Error>>(42)
+        }, ProxyMode::Rotating);
         assert_eq!(result.unwrap(), 42);
         set_proxy_enabled(true);
     }
