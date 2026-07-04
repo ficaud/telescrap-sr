@@ -23,7 +23,8 @@ use crate::app::clubs::{
         parse_seat_preview::LarochellSeatPreviewParser,
     }
 };
-use crate::interface::curl::web::{WebClient, connect_and_add_to_cart, ProxyMode};
+use crate::interface::curl::proxy::ProxyMode;
+use crate::interface::curl::web::{WebClient, connect_and_add_to_cart};
 use crate::interface::storage::EncounterStore;
 
 fn matchs_db_path() -> String {
@@ -69,7 +70,7 @@ pub fn print_db_contents() {
 /// A list of encounters with their seats information populated
 ///
 pub fn get_seats_from_matches(club: Club, match_type: MatchNature) -> Vec<Encounter> {
-    let client = WebClient::new(ProxyMode::Disabled);
+    let mut client = WebClient::new(ProxyMode::Rotating);
     let db = EncounterStore::open(matchs_db_path()).unwrap();
 
     // Priority 1: try cached active resale links from DB first
@@ -86,6 +87,7 @@ pub fn get_seats_from_matches(club: Club, match_type: MatchNature) -> Vec<Encoun
                 Some(record.resale_link.clone()),
             );
 
+            // Here we fecth all the seats from the active resale link
             let mut with_seats = get_encounters_with_seats(vec![encounter], &client);
             if let Some(e) = with_seats.first_mut() {
                 let has_seats = e.seats.as_ref().map_or(false, |s| !s.is_empty());
@@ -151,6 +153,8 @@ pub fn get_seats_from_matches(club: Club, match_type: MatchNature) -> Vec<Encoun
         encounter
     }).collect();
 
+    // Change the mode to sticky to avoid changing th proxy here
+    client.set_proxy_mode(ProxyMode::Sticky);
     get_encounters_with_seats(matches, &client)
 }
 
@@ -167,7 +171,7 @@ pub fn get_seats_from_matches(club: Club, match_type: MatchNature) -> Vec<Encoun
 ///
 pub fn get_seats_from_match_title(match_title: String, club: Club, match_type: MatchNature) -> Vec<Encounter> {
     // We need rotating proxy here because we are directly fecthing the resale link save in db
-    let client = WebClient::new(ProxyMode::Rotating);
+    let mut client = WebClient::new(ProxyMode::Rotating);
     let db = EncounterStore::open(matchs_db_path()).unwrap();
 
     // Get all occurence from data base
@@ -230,6 +234,8 @@ pub fn get_seats_from_match_title(match_title: String, club: Club, match_type: M
     // Filter by the one with the right title
     let filtered = matches.into_iter().filter(|e| e.title == match_title).collect();
     // Get seats from the filtered match (vector of 0 or 1 encounter)
+    // Change the mode to sticky to avoid changing th proxy here
+    client.set_proxy_mode(ProxyMode::Sticky);
     get_encounters_with_seats(filtered, &client)
 }
 
