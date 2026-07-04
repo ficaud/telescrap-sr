@@ -23,6 +23,7 @@ pub struct ScanConfig {
     pub nature: MatchNature,
     // pub match_title: Option<String>,
     pub is_preview: bool,
+    pub proxy_enabled: bool,
     pub filter_chain: Option<Arc<FilterChain>>,
 }
 

@@ -1,10 +1,9 @@
 use curl::easy::Easy;
-use std::sync::LazyLock;
 use std::sync::Mutex;
 
 #[derive(Debug, Clone)]
-struct Proxy {
-    url: String,
+pub(crate) struct Proxy {
+    pub(crate) url: String,
 }
 
 /// Manages a pool of proxy URLs loaded from a file or fetched from the
@@ -18,9 +17,9 @@ struct Proxy {
 /// proxy fails, it is removed from the available pool. Use `reset_all()`
 /// to re-fetch a fresh list from the API and restart the rotation.
 pub struct ProxyManager {
-    all: Mutex<Vec<Proxy>>,
-    available: Mutex<Vec<Proxy>>,
-    cursor: Mutex<usize>,
+    pub(crate) all: Mutex<Vec<Proxy>>,
+    pub(crate) available: Mutex<Vec<Proxy>>,
+    pub(crate) cursor: Mutex<usize>,
 }
 
 impl ProxyManager {
@@ -29,7 +28,7 @@ impl ProxyManager {
     ///
     /// # Return
     /// A new instance of `ProxyManager` ready to manage proxy URLs.
-    fn new() -> Self {
+    pub(crate) fn new() -> Self {
         ProxyManager {
             all: Mutex::new(vec![]),
             available: Mutex::new(vec![]),
@@ -250,60 +249,211 @@ impl ProxyManager {
         self.ensure_fetched();
         self.all.lock().unwrap().len()
     }
+
+    /// Returns the current proxy URL without advancing the cursor.
+    /// The same proxy will be returned on the next call until `advance()`
+    /// is called (useful for sticky proxy mode).
+    pub fn peek(&self) -> Option<String> {
+        self.ensure_fetched();
+        let available = self.available.lock().unwrap();
+        if available.is_empty() {
+            return None;
+        }
+        let cursor = self.cursor.lock().unwrap();
+        let idx = if *cursor >= available.len() { 0 } else { *cursor };
+        Some(available[idx].url.clone())
+    }
+
+    /// Advances the cursor to the next proxy in the rotation.
+    /// Use after marking a proxy as failed in sticky mode.
+    pub fn advance(&self) {
+        self.ensure_fetched();
+        let available = self.available.lock().unwrap();
+        if available.is_empty() {
+            return;
+        }
+        let mut cursor = self.cursor.lock().unwrap();
+        *cursor = (*cursor + 1) % available.len();
+    }
 }
 
-/// Global proxy manager, initialised lazily on first use.  The proxy
-/// list is fetched from the ProxyScrape API when the first request is
-/// made.
-pub static PROXY_MANAGER: LazyLock<ProxyManager> = LazyLock::new(ProxyManager::new);
+// To run these tests:
+// cargo test -p parser --lib proxy_core -- --nocapture
+//
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::interface::curl::proxy::proxy_api::{PROXY_ENABLED, ProxyMode, set_proxy_enabled, retry_with_proxy_mode};
 
-/// Executes `f` with automatic proxy selection and failover.
-///
-/// - If the proxy pool is empty (API unavailable), `f(None)` is called
-///   once (no proxy).
-/// - Otherwise the next proxy in the rotation is chosen and passed as
-///   `Some(url)`. If `f` returns an error, that proxy is marked as
-///   failed and the next available proxy is tried, repeating until one
-///   succeeds or all proxies are exhausted.
-///
-/// # Example
-/// ```ignore
-/// let html = retry_with_proxy(|proxy| {
-///     let mut easy = Easy::new();
-///     if let Some(p) = proxy {
-///         easy.proxy(p)?;
-///     }
-///     // ... configure easy ...
-///     Ok(result)
-/// })?;
-/// ```
-pub fn retry_with_proxy<F, T>(mut f: F) -> Result<T, Box<dyn std::error::Error>>
-where
-    F: FnMut(Option<&str>) -> Result<T, Box<dyn std::error::Error>>,
-{
-    // Attempt to fetch proxies. If the pool is empty (API unavailable),
-    // call the closure once without a proxy.
-    if PROXY_MANAGER.total_count() == 0 {
-        return f(None);
-    }
-
-    let mut last_err = None;
-    while let Some(proxy_url) = PROXY_MANAGER.get() {
-        // Extract and display ip:port from the proxy URL (e.g. "http://1.2.3.4:8080")
-        let display = proxy_url.split("://").nth(1).unwrap_or(&proxy_url);
-        println!("[PROXY] Using proxy: {}", display);
-
-        match f(Some(&proxy_url)) {
-            Ok(val) => return Ok(val),
-            Err(e) => {
-                PROXY_MANAGER.mark_failed(&proxy_url);
-                last_err = Some(e);
-                if PROXY_MANAGER.available_count() == 0 {
-                    break;
-                }
-            }
+    /// Helper to create a ProxyManager pre-populated with test proxies.
+    fn make_manager(urls: &[&str]) -> ProxyManager {
+        let proxies: Vec<Proxy> = urls
+            .iter()
+            .map(|u| Proxy { url: u.to_string() })
+            .collect();
+        ProxyManager {
+            all: Mutex::new(proxies.clone()),
+            available: Mutex::new(proxies),
+            cursor: Mutex::new(0),
         }
     }
-    Err(last_err
-        .unwrap_or_else(|| "All proxies exhausted and no direct connection configured".into()))
+
+    // -----------------------------------------------------------------------
+    // normalize_proxy_url
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn normalize_full_url_passthrough() {
+        let url = "http://user:pass@1.2.3.4:8080";
+        assert_eq!(ProxyManager::normalize_proxy_url(url), url);
+    }
+
+    #[test]
+    fn normalize_ip_port() {
+        assert_eq!(
+            ProxyManager::normalize_proxy_url("1.2.3.4:8080"),
+            "http://1.2.3.4:8080"
+        );
+    }
+
+    #[test]
+    fn normalize_ip_port_user_pass() {
+        assert_eq!(
+            ProxyManager::normalize_proxy_url("1.2.3.4:8080:alice:secret"),
+            "http://alice:secret@1.2.3.4:8080"
+        );
+    }
+
+    #[test]
+    fn normalize_malformed_returns_empty() {
+        let result = ProxyManager::normalize_proxy_url("just-a-string");
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn normalize_already_full_url() {
+        let url = "socks5://user:pass@5.6.7.8:1080";
+        assert_eq!(ProxyManager::normalize_proxy_url(url), url);
+    }
+
+    // -----------------------------------------------------------------------
+    // get() - round-robin rotation
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn get_returns_none_after_all_marked_failed() {
+        let m = make_manager(&["http://a:1"]);
+        m.mark_failed("http://a:1");
+        assert_eq!(m.get(), None);
+    }
+
+    #[test]
+    fn get_rotates_through_all_proxies() {
+        let m = make_manager(&["http://a:1", "http://b:2", "http://c:3"]);
+        assert_eq!(m.get(), Some("http://a:1".into()));
+        assert_eq!(m.get(), Some("http://b:2".into()));
+        assert_eq!(m.get(), Some("http://c:3".into()));
+        // wraps around
+        assert_eq!(m.get(), Some("http://a:1".into()));
+    }
+
+    #[test]
+    fn get_single_proxy_repeats() {
+        let m = make_manager(&["http://only:1"]);
+        for _ in 0..5 {
+            assert_eq!(m.get(), Some("http://only:1".into()));
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // mark_failed()
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn mark_failed_removes_proxy_from_rotation() {
+        let m = make_manager(&["http://a:1", "http://b:2", "http://c:3"]);
+        assert_eq!(m.get(), Some("http://a:1".into()));
+        assert_eq!(m.get(), Some("http://b:2".into()));
+        m.mark_failed("http://b:2");
+        assert_eq!(m.get(), Some("http://c:3".into()));
+        assert_eq!(m.get(), Some("http://a:1".into()));
+        for _ in 0..10 {
+            assert_ne!(m.get(), Some("http://b:2".into()));
+        }
+    }
+
+    #[test]
+    fn mark_failed_nonexistent_is_noop() {
+        let m = make_manager(&["http://a:1"]);
+        m.mark_failed("http://ghost:9");
+        assert_eq!(m.available_count(), 1);
+        assert_eq!(m.get(), Some("http://a:1".into()));
+    }
+
+    #[test]
+    fn mark_all_failed_exhausts_pool() {
+        let m = make_manager(&["http://a:1", "http://b:2"]);
+        m.mark_failed("http://a:1");
+        m.mark_failed("http://b:2");
+        assert_eq!(m.available_count(), 0);
+        assert_eq!(m.get(), None);
+    }
+
+    // -----------------------------------------------------------------------
+    // available_count / total_count
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn counts_after_failures() {
+        let m = make_manager(&["http://a:1", "http://b:2", "http://c:3"]);
+        assert_eq!(m.total_count(), 3);
+        assert_eq!(m.available_count(), 3);
+        m.mark_failed("http://b:2");
+        assert_eq!(m.total_count(), 3);
+        assert_eq!(m.available_count(), 2);
+    }
+
+    // -----------------------------------------------------------------------
+    // set_proxy_enabled / PROXY_ENABLED flag
+    // -----------------------------------------------------------------------
+    #[test]
+    fn set_proxy_enabled_toggles_flag() {
+        set_proxy_enabled(false);
+        assert!(!PROXY_ENABLED.load(std::sync::atomic::Ordering::Relaxed));
+        set_proxy_enabled(true);
+        assert!(PROXY_ENABLED.load(std::sync::atomic::Ordering::Relaxed));
+    }
+
+    #[test]
+    fn retry_with_proxy_disabled_mode_skips_proxy() {
+        let result = retry_with_proxy_mode(|proxy| {
+            assert!(proxy.is_none(), "Expected no proxy in Disabled mode");
+            Ok::<_, Box<dyn std::error::Error>>(42)
+        }, ProxyMode::Disabled);
+        assert_eq!(result.unwrap(), 42);
+    }
+
+    #[test]
+    fn retry_with_proxy_sticky_uses_same_proxy_on_success() {
+        // In sticky mode, the same proxy should be returned on consecutive calls
+        // when no failure occurs. We can verify peeks don't advance the cursor.
+        let m = make_manager(&["http://sticky:1", "http://next:2"]);
+        assert_eq!(m.peek(), Some("http://sticky:1".into()));
+        assert_eq!(m.peek(), Some("http://sticky:1".into()));
+        assert_eq!(m.peek(), Some("http://sticky:1".into()));
+        // Only advance() should move the cursor
+        m.advance();
+        assert_eq!(m.peek(), Some("http://next:2".into()));
+    }
+
+    #[test]
+    fn retry_with_proxy_failover_disabled_mode() {
+        set_proxy_enabled(false);
+        let result = retry_with_proxy_mode(|proxy| {
+            assert!(proxy.is_none(), "Expected no proxy when globally disabled");
+            Ok::<_, Box<dyn std::error::Error>>(42)
+        }, ProxyMode::Rotating);
+        assert_eq!(result.unwrap(), 42);
+        set_proxy_enabled(true);
+    }
 }

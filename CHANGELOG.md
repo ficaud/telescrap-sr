@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.10] - 2026-07-04
+
+### Added
+- Version and issues number badges ([#13](https://github.com/Thejulfi/telescrap-sr/issues/13))
+- Toggle button in the admin panel to enable/disable proxy usage for the parser fetching ([#15](https://github.com/Thejulfi/telescrap-sr/issues/15))
+- Use the local database to serve cached resale links and avoid parsing the ticketing home page when an active resale URL already exists ([#21](https://github.com/Thejulfi/telescrap-sr/issues/21))
+- Date parser and check to invalidate resale links that are no longer valid ([#21](https://github.com/Thejulfi/telescrap-sr/issues/21))
+- Tutorial for the `db-reader` utility tool built for the ARM64 architecture.
+- Proxy now supports sticking to a list of proxy servers, which enables the parser to avoid rotating when needed. ([#20](https://github.com/Thejulfi/telescrap-sr/issues/20))
+- `Proxy_core` and `encounter` unit testing in CI ([#19](https://github.com/Thejulfi/telescrap-sr/issues/19))
+
+### Changed
+- Prioritize self-hosted runner in the CI workflow for faster builds; workflow dispatch now includes an input to choose a GitHub-hosted runner fallback
+
+### Removed
+- `README.md` TODO list that are now tracked in the GitHub issues.
+
 ## [2.1.9] - 2026-06-23
 
 ### Added

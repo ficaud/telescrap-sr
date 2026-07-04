@@ -2,6 +2,7 @@
 use parser::core::encounter::Encounter;
 /// This module defines the `ScanTask` struct and its associated logic for performing periodic scans of encounters,
 /// applying filters, and notifying about changes in available seats.
+use parser::interface::curl::proxy::set_proxy_enabled;
 use parser::interface::match_manager;
 use filter::filter::Filter;
 use std::panic::{AssertUnwindSafe, catch_unwind};
@@ -36,6 +37,7 @@ impl<N: Notify> ScanTask<N> {
     /// A new instance of `ScanTask` initialized with the provided configuration and notifier.
     pub fn new(mut config_rx: watch::Receiver<ScanConfig>, notifier: N, state_rx: watch::Receiver<AppState>) -> Self {
         let config = config_rx.borrow_and_update().clone();
+        set_proxy_enabled(config.proxy_enabled);
         Self { config, config_rx, notifier, previous: None, state_rx }
     }
 
@@ -51,6 +53,7 @@ impl<N: Notify> ScanTask<N> {
                         break; // sender dropped (shutdown), exit cleanly
                     }
                     self.config = self.config_rx.borrow_and_update().clone();
+                    set_proxy_enabled(self.config.proxy_enabled);
                     self.previous = None;
                     ticker = interval(Duration::from_secs(self.config.interval));
                     println!("⚙️  Configuration mise à jour, redémarrage du cycle");
@@ -76,11 +79,20 @@ impl<N: Notify> ScanTask<N> {
             let club = self.config.club.clone();
             // Fetch match nature from config
             let nature = self.config.nature;
+            // Check if a specific match title filter is set
+            let filter_title = self.config.filter_chain
+                .as_ref()
+                .and_then(|c| c.encounter_title())
+                .map(|s| s.to_string());
 
             // Fetch encounters from the match manager in a blocking task to avoid blocking the async runtime
             let scan_result = tokio::task::spawn_blocking(move || {
-                let encounters = match_manager::get_seats_from_matches(club, nature);
-                // println!("📋 {} rencontre(s) récupérée(s)", encounters.len());
+                let encounters = if let Some(ref title) = filter_title {
+                    match_manager::get_seats_from_match_title(title.clone(), club, nature)
+                } else {
+                    match_manager::get_seats_from_matches(club, nature)
+                };
+                println!("[SCAN_TASK] {} encounter(s) retrieved", encounters.len());
                 ScanResult::new(encounters)
             })
             .await
@@ -148,12 +160,12 @@ impl<N: Notify> ScanTask<N> {
 
     /// In aggressive mode, attempts to automatically add detected seats to the basket on the ticketing website.
     /// This method uses the `match_manager` to connect to the ticketing website and add seats to the cart based on the provided encounters.
-    /// 
+    ///
     /// # Arguments
     /// * `encounters` - A slice of `Encounter` instances representing the detected encounters with available seats that should be added to the basket.
     /// # Returns
     /// The number of seats that were successfully added to the basket.
-    /// 
+    ///
     /// Note: This method requires the `SHOP_EMAIL` and `SHOP_PASSWORD` environment variables to be set with valid credentials for the ticketing website.
     fn try_aggressive_add_to_basket(&self, encounters: &[Encounter]) -> usize {
         if encounters.is_empty() {
@@ -229,7 +241,7 @@ impl<N: Notify> ScanTask<N> {
     }
 
     /// Notifies about the parsed information by constructing a message that includes the details of the encounters and the detected changes, and sending it through the notifier.
-    /// 
+    ///
     /// # Arguments
     /// * `changed` - A slice of `DiffResult` instances representing the detected changes that should be included in the notification.
     ///
@@ -299,31 +311,4 @@ impl<N: Notify> ScanTask<N> {
             }
         }
     }
-
-    // TODO : see if that really useful
-    // fn get_scanner_time_str(&self, scanned_at: &ScanResult) -> String {
-    //     let secs = scan_result.scanned_at
-    //         .duration_since(std::time::UNIX_EPOCH)
-    //         .map(|d| d.as_secs())
-    //         .unwrap_or(0);
-    //     let (h, m, s) = (secs % 86400 / 3600, secs % 3600 / 60, secs % 60);
-    //     let days_since_epoch = secs / 86400;
-    //     // Simple Gregorian date from days since 1970-01-01
-    //     let (mut y, mut doy) = (1970u32, days_since_epoch as u32);
-    //     loop {
-    //         let dy = if y % 4 == 0 && (y % 100 != 0 || y % 400 == 0) { 366 } else { 365 };
-    //         if doy < dy { break; }
-    //         doy -= dy;
-    //         y += 1;
-    //     }
-    //     let leap = y % 4 == 0 && (y % 100 != 0 || y % 400 == 0);
-    //     let months = [31u32, if leap { 29 } else { 28 }, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-    //     let (mut mo, mut d) = (1u32, doy + 1);
-    //     for days_in_month in months {
-    //         if d <= days_in_month { break; }
-    //         d -= days_in_month;
-    //         mo += 1;
-    //     }
-    //     format!("{:02}/{:02}/{} à {:02}:{:02}:{:02}", d, mo, y, h, m, s)
-    // }
 }

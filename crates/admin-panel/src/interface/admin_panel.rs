@@ -51,6 +51,8 @@ struct ScanConfigForm {
     match_title: Option<String>,
     #[serde(default)]
     is_preview: Option<String>,
+    #[serde(default)]
+    proxy_enabled: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -126,6 +128,7 @@ async fn index(State(state): State<AppState>) -> Html<String> {
     let side_by_side    = chain.and_then(|c| c.side_by_side()).map(|v| v.to_string()).unwrap_or_default();
     let match_title     = chain.and_then(|c| c.encounter_title()).unwrap_or("").to_string();
     let chk_preview     = if config.is_preview { "checked" } else { "" };
+    let chk_proxy       = if config.proxy_enabled { "checked" } else { "" };
 
     let html = INDEX_HTML
         .replace("{interval}", &interval.to_string())
@@ -142,6 +145,7 @@ async fn index(State(state): State<AppState>) -> Html<String> {
         .replace("{side_by_side}", &side_by_side)
         .replace("{match_title}", &match_title)
         .replace("{chk_preview}", chk_preview)
+        .replace("{chk_proxy}", chk_proxy)
         .replace("{chk_scan_toggle}", chk_scan_toggle)
         .replace("{app_version}", &app_version);
 
@@ -198,6 +202,7 @@ async fn update_config(
 
     // new_config.match_title = match_title.clone();
     new_config.is_preview = form.is_preview.is_some();
+    new_config.proxy_enabled = form.proxy_enabled.is_some();
 
     // Build the FilterChain from the form values
     let mut chain = FilterChain::new();
@@ -247,7 +252,7 @@ async fn update_state(
 /// Starts the admin panel web server, allowing runtime configuration of the scanner through a web interface.
 /// The server listens on the port provided by `ADMIN_PANEL_PORT` (default: `3000`) and
 /// provides endpoints for viewing the current configuration and updating it through a form submission.
-/// 
+///
 /// # Arguments
 /// * `config_tx` - A `watch::Sender<ScanConfig>` used to broadcast updated scanner configurations to the scanning task when changes are made through the admin panel.
 ///
@@ -282,6 +287,6 @@ pub async fn run_with_state(
 
     let bind_addr = format!("0.0.0.0:{}", port);
     let listener = TcpListener::bind(&bind_addr).await.unwrap();
-    println!("Server as start on http://localhost:{}", port);
+    println!("[TCP] Server as start on http://localhost:{}", port);
     axum::serve(listener, app).await.unwrap();
 }

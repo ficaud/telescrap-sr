@@ -1211,6 +1211,7 @@ dependencies = [
 name = "parser"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "curl",
  "openssl",
  "redb",
@@ -1889,7 +1890,7 @@ dependencies = [
 
 [[package]]
 name = "telescrap-sr"
-version = "2.1.9"
+version = "2.1.10"
 dependencies = [
  "admin-panel",
  "dotenv",

@@ -4,16 +4,10 @@
 	<img src="doc/img/logo.png" width="150">
 </p>
 
-[![Cross-Compile and Deploy](https://github.com/Thejulfi/telescrap-sr/actions/workflows/deploy.yml/badge.svg)](https://github.com/Thejulfi/telescrap-sr/actions/workflows/deploy.yml)
+[![version](https://img.shields.io/github/v/release/Thejulfi/telescrap-sr?label=version&color=blue)](https://github.com/Thejulfi/telescrap-sr/releases)
+[![issues](https://img.shields.io/github/issues/Thejulfi/telescrap-sr?label=issues&color=orange)](https://github.com/Thejulfi/telescrap-sr/issues)
 
 Scraping tool to get notification for resale ticket, currently implemented for Stade Rochelais rugby matches.
-
-## Roadmap
-
-- [ ] Filter rework to allow 1 passive and mulitple aggressive filters
-- [x] Admin panel to manage the bot (web interface or terminal)
-- [x] config.json to set up the scan and filter configuration by default (and save updated ones from the admin panel).
-- [ ] Web app to collect match ticket requests and build a waiting list that the bot can use to automatically add tickets to cart in aggressive mode.
 
 ## Why this project ?
 
@@ -45,6 +39,14 @@ You can request access by contacting the project administrator via private messa
 The bot includes a web interface for managing its operations, allowing you to start or stop the bot, configure filters and other settings without needing to modify the configuration file.
 
 Read the [ADMIN_PANEL.md](doc/ADMIN_PANEL.md) documentation for more details about the features of the admin panel and how to use it.
+
+## Tools
+
+### Redb database reader
+
+To read a redb database, compile and use the `db-reader` crate included in the project.
+
+* [Read more about it](doc/DB_READER.md)
 
 ## See also
 
