@@ -249,6 +249,32 @@ impl ProxyManager {
         self.ensure_fetched();
         self.all.lock().unwrap().len()
     }
+
+    /// Returns the current proxy URL without advancing the cursor.
+    /// The same proxy will be returned on the next call until `advance()`
+    /// is called (useful for sticky proxy mode).
+    pub fn peek(&self) -> Option<String> {
+        self.ensure_fetched();
+        let available = self.available.lock().unwrap();
+        if available.is_empty() {
+            return None;
+        }
+        let cursor = self.cursor.lock().unwrap();
+        let idx = if *cursor >= available.len() { 0 } else { *cursor };
+        Some(available[idx].url.clone())
+    }
+
+    /// Advances the cursor to the next proxy in the rotation.
+    /// Use after marking a proxy as failed in sticky mode.
+    pub fn advance(&self) {
+        self.ensure_fetched();
+        let available = self.available.lock().unwrap();
+        if available.is_empty() {
+            return;
+        }
+        let mut cursor = self.cursor.lock().unwrap();
+        *cursor = (*cursor + 1) % available.len();
+    }
 }
 
 #[cfg(test)]
