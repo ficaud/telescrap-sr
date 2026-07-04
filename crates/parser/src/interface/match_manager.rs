@@ -177,6 +177,32 @@ pub fn get_seats_from_match_title(match_title: String, club: Club, match_type: M
             // try to find a record with the same title and an active resale link
             for record in records {
                 if record.title == match_title && record.resale_active {
+                        // Check if the match date has passed first
+                        let date_check = Encounter::new(
+                            Club::get_type_from_name(&record.club_type),
+                            record.title.clone(),
+                            record.date.clone(),
+                            match_type,
+                            None,
+                        );
+
+                        // If the match date has passed, mark the record as inactive and continue to the next record
+                        if date_check.date_passed() {
+                            eprintln!(
+                                "[CACHE] Match '{}' ({}) has passed, disabling cached link",
+                                record.title, record.date,
+                            );
+                            let stale = Encounter::new(
+                                Club::get_type_from_name(&record.club_type),
+                                record.title.clone(),
+                                record.date.clone(),
+                                match_type,
+                                None,
+                            );
+                            let _ = db.upsert(&stale);
+                            continue;
+                        }
+
                         // If that records has an active resale link, try to fetch seats from it
                         let link = &record.resale_link;
                         match client.get_html(link) {
