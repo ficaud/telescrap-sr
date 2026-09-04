@@ -96,10 +96,20 @@ nano docker-compose.yml
 
 Docker compose example template with minimum configuration for 1 instance of the bot is provided in the repository (`docker-compose.yml.example`):
 
+In this example, you can configure 2 scanner instances, each with its own configuration file and its own data folder.
+
 ```yaml
+x-app: &default-app
+  build:
+    context: .
+    dockerfile: docker/Dockerfile
+    target: local-runtime
+  restart: unless-stopped
+
 services:
   # Scanner Instance 1 - Port 3000
   scanner-1:
+    <<: *default-app
     image: ${DOCKER_IMAGE:-ghcr.io/ficaud/telescrap-sr:latest}
     container_name: telescrap-scanner-1
     ports:
@@ -108,8 +118,8 @@ services:
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN_SCANNER_1}
       - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID_SCANNER_1}
       - ADMIN_PANEL_PORT=3000
-      - SHOP_EMAIL=${SHOP_EMAIL}
-      - SHOP_PASSWORD=${SHOP_PASSWORD}
+      - SHOP_EMAIL=${SHOP_EMAIL:-}
+      - SHOP_PASSWORD=${SHOP_PASSWORD:-}
       - RUST_LOG=${RUST_LOG:-info}
       - INSTANCE_ID=scanner-1
       - MATCHS_DB_PATH=/app/data/matchs.db
@@ -117,15 +127,36 @@ services:
       - .env
     volumes:
       - ./data/scanner-1:/app/data
-    restart: unless-stopped
+
+  # Scanner Instance 2 - Port 3001
+  scanner-2:
+    <<: *default-app
+    image: ${DOCKER_IMAGE:-ghcr.io/ficaud/telescrap-sr:latest}
+    container_name: telescrap-scanner-2
+    ports:
+      - "3001:3001"
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN_SCANNER_2}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID_SCANNER_2}
+      - ADMIN_PANEL_PORT=3001
+      - SHOP_EMAIL=${SHOP_EMAIL:-}
+      - SHOP_PASSWORD=${SHOP_PASSWORD:-}
+      - RUST_LOG=${RUST_LOG:-info}
+      - INSTANCE_ID=scanner-2
+      - MATCHS_DB_PATH=/app/data/matchs.db
+    env_file:
+      - .env
+    volumes:
+      - ./data/scanner-2:/app/data
 
 volumes:
   scanner-1-data:
+  scanner-2-data:
 
 networks:
   default:
     name: telescrap-network
-    driver: bridge
+    driver: bridge 
 ```
 
 ###  4. Copy the environment template and edit it with your Telegram credentials:
@@ -158,34 +189,25 @@ cp examples/docker/config_scan.json.example config_scan.json
 nano config_scan.json
 ```
 
-Configuration json example template is provided in the repository (`examples/docker/config_scan.json.example`):
+Configuration json example template is provided in the repository (`examples/docker/config_scan.json.example`). This one is voluntarily simple because you'll be able to do the rest of the configuration through the web portal:
 
 ```json
 {
-    "mode": "Passive",
-    "interval": 60,
-    "club": "StadeRochelais",
-    "nature": "Rugby",
-    "is_preview": true,
-    "filter_chain": [
-        {
-            "type": "Encounter",
-            "name": ""
-        },
-        {
-            "type": "Price",
-            "min": 10.0,
-            "max": 50.0
-        },
-        {
-            "type": "Seat",
-            "category": null,
-            "bloc": null,
-            "row": null,
-            "min_consecutive": 2
-        }
-    ]
+  "mode": "Passive",
+  "interval": 60,
+  "club": "StadeRochelais",
+  "nature": "Rugby",
+  "is_preview": true,
+  "proxy_enabled": false,
+  "filter_chain": null
 }
+```
+
+You should then create the scanner-1 and scanner-2 instance data folder by building the following tree:
+
+```bash
+./data/scanner-1/config_scan.json
+./data/scanner-2/config_scan.json
 ```
 
 ###  7. Start the Docker services:
@@ -217,3 +239,6 @@ docker compose build --no-cache
 docker compose up -d
 ```
 
+## See also 
+
+- [ADMIN_PANEL.md](ADMIN_PANEL.md) for more details about the admin panel and how to use it.

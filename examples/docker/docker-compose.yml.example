@@ -1,6 +1,14 @@
+x-app: &default-app
+  build:
+    context: .
+    dockerfile: docker/Dockerfile
+    target: local-runtime
+  restart: unless-stopped
+
 services:
   # Scanner Instance 1 - Port 3000
   scanner-1:
+    <<: *default-app
     image: ${DOCKER_IMAGE:-ghcr.io/ficaud/telescrap-sr:latest}
     container_name: telescrap-scanner-1
     ports:
@@ -18,10 +26,10 @@ services:
       - .env
     volumes:
       - ./data/scanner-1:/app/data
-    restart: unless-stopped
 
   # Scanner Instance 2 - Port 3001
   scanner-2:
+    <<: *default-app
     image: ${DOCKER_IMAGE:-ghcr.io/ficaud/telescrap-sr:latest}
     container_name: telescrap-scanner-2
     ports:
@@ -39,7 +47,6 @@ services:
       - .env
     volumes:
       - ./data/scanner-2:/app/data
-    restart: unless-stopped
 
 volumes:
   scanner-1-data:
