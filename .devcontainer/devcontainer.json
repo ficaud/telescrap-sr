@@ -1,6 +1,14 @@
 {
   "name": "Rust Dev Container",
-  "image": "rust:latest",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "..",
+    "args": {
+      "USERNAME": "tscrap",
+      "USER_UID": "1000",
+      "USER_GID": "1000"
+    }
+  },
   "customizations": {
     "vscode": {
       "extensions": [
@@ -15,5 +23,22 @@
       }
     }
   },
-  "postCreateCommand": "rustup component add clippy rustfmt && rustc --version && cargo --version && cargo clippy --version"
+  "containerEnv": {
+    "SSH_AUTH_SOCK": "/tmp/ssh-agent.socket"
+  },
+  "mounts": [
+    "source=${localEnv:HOME}/.config/nvim,target=/home/tscrap/.config/nvim,type=bind,consistency=cached",
+    "source=${localEnv:HOME}/.gitconfig,target=/home/tscrap/.gitconfig.host,type=bind,readonly",
+    "source=${localEnv:HOME}/.zshrc,target=/home/tscrap/.zshrc.host,type=bind,readonly",
+    "source=${localEnv:HOME}/.ssh,target=/home/tscrap/.ssh,type=bind,consistency=cached"
+  ],
+  "postCreateCommand": "sudo -n chown -R \"$(whoami):$(id -g)\" /workspaces/telescrap-sr 2>/dev/null || true; mkdir -p \"$HOME/.ssh\" && chmod 700 \"$HOME/.ssh\" && ssh-keyscan github.com >> \"$HOME/.ssh/known_hosts\" 2>/dev/null || true; rustc --version && cargo --version && cargo clippy --version && rust-analyzer --version",
+  "overrideCommand": false,
+  "updateRemoteUserUID": false,
+  "remoteUser": "tscrap",
+  "runArgs": [
+    "-v",
+    "${localEnv:SSH_AUTH_SOCK}:/tmp/ssh-agent.socket"
+  ],
+  "forwardPorts": [8000]
 }
