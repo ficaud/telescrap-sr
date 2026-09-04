@@ -33,6 +33,26 @@ impl MatchNature {
             MatchNature::Other
         }
     }
+
+    /// Determines the MatchNature based on the badge text of a match card.
+    ///
+    /// The ticketing site now shows the sport as a badge (e.g. "RUGBY", "BASKET")
+    /// while the card title only contains the opponent name.
+    ///
+    /// # Arguments
+    /// * `badge` - The badge text of the match card
+    /// # Returns
+    /// The corresponding MatchNature enum variant based on the badge content
+    pub fn from_badge(badge: &str) -> Self {
+        let upper = badge.to_uppercase();
+        if upper.contains("RUGBY") {
+            MatchNature::Rugby
+        } else if upper.contains("BASKET") {
+            MatchNature::Basketball
+        } else {
+            MatchNature::Other
+        }
+    }
 }
 
 /// Encounter represents a sports match or event, including its title, date, nature, and associated seats.

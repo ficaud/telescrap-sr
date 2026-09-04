@@ -30,6 +30,7 @@ pub fn parse_match(html: &str) -> Vec<Encounter> {
     let title_selector = Selector::parse("h3.title").unwrap();
     let date_selector = Selector::parse("span.date").unwrap();
     let link_selector = Selector::parse("a.btn-resale").unwrap();
+    let badge_selector = Selector::parse("span.badge-event").unwrap();
 
     // Use a HashSet to track seen matches and filter out duplicates based on title and date
     let mut encounters = Vec::new();
@@ -48,8 +49,18 @@ pub fn parse_match(html: &str) -> Vec<Encounter> {
             .map(|el| el.text().collect::<String>().trim().to_string())
             .unwrap_or_default();
 
+        let badge = meeting
+            .select(&badge_selector)
+            .next()
+            .map(|el| el.text().collect::<String>().trim().to_string())
+            .unwrap_or_default();
+
         if !title.is_empty() {
-            let nature = MatchNature::from_title(&title);
+            let nature = if badge.is_empty() {
+                MatchNature::from_title(&title)
+            } else {
+                MatchNature::from_badge(&badge)
+            };
             let resale_link = meeting
                 .select(&link_selector)
                 .next()
