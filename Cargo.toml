@@ -10,3 +10,7 @@ telegram-notifier = { path = "crates/telegram-notifier" }
 admin-panel = { path = "crates/admin-panel" }
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 dotenv = "0.15"
+
+[workspace]
+members = ["crates/*"]
+resolver = "3"
