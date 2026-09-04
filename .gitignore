@@ -16,3 +16,5 @@ crates/filter/src/main.rs
 docker-compose.yml
 config_scan.json
 proxies.txt
+/.private/
+.ignore
