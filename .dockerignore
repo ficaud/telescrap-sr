@@ -1,6 +1,8 @@
 .git
 .github
-.devcontainer
+.devcontainer/*
+!.devcontainer/entrypoint.sh
+!.devcontainer/Dockerfile
 target
 **/target
 log.txt
