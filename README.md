@@ -52,3 +52,4 @@ To read a redb database, compile and use the `db-reader` crate included in the p
 
 - [ARCHITECTURE.md](doc/ARCHITECTURE.md) : for more details about the architecture of the project and the crates organization.
 - [CHANGELOG.md](CHANGELOG.md) : for a detailed list of changes and updates made to the project over time.
+- [CONTRIBUTING.md](CONTRIBUTING.md) : for information about how to contribute to the project.
