@@ -5,7 +5,7 @@ use crate::core::seat::Seat;
 use crate::core::club::ClubType;
 use std::sync::atomic::{AtomicU64, Ordering};
 use chrono::{Datelike, NaiveDate, NaiveDateTime, Utc};
-
+use chrono_tz::Europe::Paris;
 /// MatchNature is an enumeration that categorizes the type of match or event, such as rugby, basketball, or other.
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum MatchNature {
@@ -129,7 +129,7 @@ impl Encounter {
     /// Returns `true` if the encounter date has already passed (i.e. the match is over).
     pub fn date_passed(&self) -> bool {
         self.try_parse_date()
-            .map(|dt| dt < Utc::now().naive_utc())
+            .map(|dt| dt < Utc::now().with_timezone(&Paris).naive_local())
             .unwrap_or(false)
     }
 
