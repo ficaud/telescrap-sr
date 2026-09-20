@@ -2022,7 +2022,7 @@ dependencies = [
 
 [[package]]
 name = "telescrap-sr"
-version = "2.1.11"
+version = "2.1.12"
 dependencies = [
  "admin-panel",
  "dotenv",
