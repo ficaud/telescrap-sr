@@ -62,7 +62,7 @@ fn fetch_html(url: &str, cookie_jar: Option<&str>, proxy_mode: ProxyMode) -> Res
             easy.proxy(p)?;
         }
         easy.connect_timeout(Duration::from_secs(5))?;
-        easy.timeout(Duration::from_secs(15))?;
+        easy.timeout(Duration::from_secs(30))?;
         easy.follow_location(true)?;
         let mut html = Vec::new();
         {
