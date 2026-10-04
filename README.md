@@ -46,15 +46,9 @@ You can request access by contacting the project administrator via private messa
 
 The bot includes a web interface for managing its operations, allowing you to start or stop the bot, configure filters and other settings without needing to modify the configuration file.
 
+This panel will appears once the bot is running on your local network.
+
 Read the [ADMIN_PANEL.md](doc/ADMIN_PANEL.md) documentation for more details about the features of the admin panel and how to use it.
-
-## Tools
-
-### Redb database reader
-
-To read a redb database, compile and use the `db-reader` crate included in the project.
-
-* [Read more about it](doc/DB_READER.md)
 
 ## See also
 

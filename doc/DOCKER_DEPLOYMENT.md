@@ -63,31 +63,7 @@ Then log out and log in again (or reboot) to apply group changes.
 
 Official reference: https://docs.docker.com/engine/install/debian/
 
-### 2. (Optional) Get example file template for docker compose, environment variables and default configuration for the bot.
-
-If you want a clean checkout with only the current template files, use Git sparse-checkout:
-
-```bash
-git clone --filter=blob:none --sparse git@github.com:ficaud/telescrap-sr.git telescrap-templates
-cd telescrap-templates
-git checkout main
-
-git sparse-checkout init --no-cone
-git sparse-checkout set examples/docker
-git read-tree -mu HEAD
-
-ls -la examples/docker
-```
-
-You should get the current templates from:
-
-- `examples/docker/docker-compose.yml.example`
-- `examples/docker/.env.example`
-- `examples/docker/config_scan.json.example`
-
-Then copy them into your deployment directory:
-
-###  3. Create a docker compose file (`docker-compose.yml`) in the root of the project with the content of the template provided in the repository: `examples/docker/docker-compose.yml.example`.
+###  2. Create a docker compose file (`docker-compose.yml`) in the root of the project with the content of the template provided in the repository: `examples/docker/docker-compose.yml.example`.
 
 ```bash
 mv examples/docker/docker-compose.yml.example docker-compose.yml
@@ -159,14 +135,14 @@ networks:
     driver: bridge 
 ```
 
-###  4. Copy the environment template and edit it with your Telegram credentials:
+###  3. Copy the environment template and edit it with your Telegram credentials:
 
 ```bash
 mv examples/docker/.env.example .env
 nano .env
 ```
 
-###  5. Fill in the `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` fields with your actual Telegram bot token and chat ID.
+###  4. Fill in the `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` fields with your actual Telegram bot token and chat ID.
 
 This is where all the configuration for the different instances of the bot will be stored.
 
@@ -180,7 +156,7 @@ RUST_LOG=info
 ```
 
 
-###  6. Copy the config_scan.json template and edit it with your desired default start configuration
+###  5. Copy the config_scan.json template and edit it with your desired default start configuration
 
 This configuration will be the same for all instances, but can be updated at runtime from the admin panel.
 
@@ -237,6 +213,9 @@ docker compose build --no-cache
 ```bash
 # Start volumes and services in detached mode
 docker compose up -d
+
+# Pull the latest images
+docker compose pull
 ```
 
 ## See also 
