@@ -1,7 +1,7 @@
 
 ## How to access the admin panel
 
-Depending on how you have set up the project (see [SERVER_INSTALLATION.md](SERVER_INSTALLATION.md) documentation), you can access the admin panel by going to `http://localhost:3000` in your web browser.
+Depending on how you have set up the project (see [SERVER_INSTALLATION.md](SERVER_INSTALLATION.md) documentation), you can access the admin panel by going to `http://<your_server_ip>:3000` in your web browser.
 
 ## How it looks
 
@@ -13,6 +13,7 @@ Depending on how you have set up the project (see [SERVER_INSTALLATION.md](SERVE
 - **Interval**: Set the scanning interval in seconds. This determines how often the bot checks for new tickets.
 - **Nature**: Choose which type of filters to apply. This can be "Rugby" or "Basketball", depending on the matches you are interested in.
 - **Preview**: A checkbox that enables the bot to send a preview of the ticket's seat details in the Telegram notification. This is useful for quickly assessing the ticket's quality without opening the link.
+- **Proxy enabled**: A checkbox that enables the bot to use a proxy server to access the ticketing website.
 
 ### Lower part: Filters management
 
