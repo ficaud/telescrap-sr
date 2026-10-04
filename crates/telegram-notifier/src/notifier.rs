@@ -1,12 +1,12 @@
-use scanner::{controller::notify::Notify, core::scan::{ScanConfig}};
+use crate::core::bot_state::BotState;
+use chrono::Utc;
+use chrono_tz::Europe::Paris;
+use parser::interface::storage::BotStateStore;
+use scanner::{controller::notify::Notify, core::scan::ScanConfig};
 use teloxide::{
     prelude::*,
     types::{InputFile, ParseMode},
 };
-use parser::interface::storage::BotStateStore;
-use crate::core::bot_state::BotState;
-use chrono::Utc;
-use chrono_tz::Europe::Paris;
 
 /// This module defines the `TelegramNotifier` struct, which implements the `Notify` trait to send notifications to a Telegram chat.
 #[derive(Clone)]
@@ -19,12 +19,15 @@ pub struct TelegramNotifier {
 impl TelegramNotifier {
     /// Creates a new instance of `TelegramNotifier` with the specified bot token, chat ID and app version.
     pub fn new(bot_token: String, chat_id: i64, version: &str) -> Self {
-        Self { bot_token, chat_id, version: version.to_string() }
+        Self {
+            bot_token,
+            chat_id,
+            version: version.to_string(),
+        }
     }
 
     /// Sends or updates the bot's status message in the Telegram chat, including the current version and startup time.
     pub fn notify_state(&self, scan_config: ScanConfig) {
-
         let state_db = BotStateStore::open("state.db").expect("Impossible d'ouvrir state.db");
         let now = Utc::now().with_timezone(&Paris);
         let state = BotState {
@@ -50,8 +53,18 @@ impl TelegramNotifier {
         let config_lines = vec![
             format!("-  Club visé : {}", scan_config.club.name),
             format!("-  Intervalle : {}", interval_str),
-            format!("-  Filtres : {}", if scan_config.filter_chain.is_some() { "Oui" } else { "Non" }),
-            format!("-  Aperçu : {}", if scan_config.is_preview { "Oui" } else { "Non" }),
+            format!(
+                "-  Filtres : {}",
+                if scan_config.filter_chain.is_some() {
+                    "Oui"
+                } else {
+                    "Non"
+                }
+            ),
+            format!(
+                "-  Aperçu : {}",
+                if scan_config.is_preview { "Oui" } else { "Non" }
+            ),
         ];
 
         let config_block = config_lines.join("\n");
@@ -61,7 +74,7 @@ impl TelegramNotifier {
             config_block,
             now.format("%d/%m/%Y à %H:%M:%S")
         );
-        
+
         if let Some(id) = state.pinned_message_id {
             self.edit_message(id, &full_message);
         } else if let Some(new_id) = self.send_and_pin(&full_message) {
@@ -77,7 +90,10 @@ impl Notify for TelegramNotifier {
         let message = message.to_string();
         tokio::task::block_in_place(|| {
             tokio::runtime::Handle::current().block_on(async {
-                bot.send_message(chat_id, message).parse_mode(ParseMode::Html).await.ok();
+                bot.send_message(chat_id, message)
+                    .parse_mode(ParseMode::Html)
+                    .await
+                    .ok();
             });
         });
     }

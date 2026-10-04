@@ -1,7 +1,7 @@
 use parser::core::encounter::Encounter;
 
-use crate::filter::filter_chain::FilterChain;
 use crate::filter::Filter;
+use crate::filter::filter_chain::FilterChain;
 
 /// A Rule combines a FilterChain (AND logic between filters) with an action to execute
 /// when the chain produces at least one matching encounter.
@@ -12,7 +12,11 @@ pub struct Rule {
 }
 
 impl Rule {
-    pub fn new(name: impl Into<String>, chain: FilterChain, action: impl Fn(&[Encounter]) + 'static) -> Self {
+    pub fn new(
+        name: impl Into<String>,
+        chain: FilterChain,
+        action: impl Fn(&[Encounter]) + 'static,
+    ) -> Self {
         Rule {
             name: name.into(),
             chain,

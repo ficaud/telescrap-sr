@@ -1,13 +1,13 @@
-/// This module implements the `StoreEncounters` trait using the `redb` embedded database.
-/// It defines the `EncounterStore` struct, which provides methods for synchronizing parsed encounters with
-/// the store, retrieving active resale links, looking up records by stable ID, and retrieving all records from the store.
-use std::path::Path;
-use redb::{Database, ReadableDatabase, ReadableTable, TableDefinition};
 use super::redb::StorageError;
 use crate::{
     controller::encounter_store::{EncounterRecord, StoreEncounters},
     core::encounter::Encounter,
 };
+use redb::{Database, ReadableDatabase, ReadableTable, TableDefinition};
+/// This module implements the `StoreEncounters` trait using the `redb` embedded database.
+/// It defines the `EncounterStore` struct, which provides methods for synchronizing parsed encounters with
+/// the store, retrieving active resale links, looking up records by stable ID, and retrieving all records from the store.
+use std::path::Path;
 // Encounters are stored in a single table with `stable_id` as the key and the JSON-serialized `EncounterRecord` as the value.
 const ENCOUNTERS_TABLE: TableDefinition<&str, &str> = TableDefinition::new("encounters");
 
@@ -26,7 +26,7 @@ pub struct EncounterStore {
 impl EncounterStore {
     /// Opens a `redb` database at the specified path and initializes the encounters table
     /// if it does not already exist.
-    /// 
+    ///
     /// # Arguments
     /// * `path` - The file path where the `redb` database should be created or opened
     /// # Returns
@@ -42,12 +42,11 @@ impl EncounterStore {
 }
 
 impl StoreEncounters for EncounterStore {
-
     /// Synchronizes a parsed `Encounter` with the store by inserting or updating the corresponding `EncounterRecord` in the database.
     /// If the `Encounter` has a `resale_link`, it will be inserted or updated with `resale_active = true`.
     /// If the `Encounter` does not have a `resale_link`, the existing record (if any) will be updated to set `resale_active = false`
     /// while keeping the existing URL.
-    /// 
+    ///
     /// # Arguments
     /// * `encounter` - The `Encounter` instance to be synchronized with the store
     /// # Returns
@@ -92,7 +91,7 @@ impl StoreEncounters for EncounterStore {
     }
 
     /// Retrieves all records from the store that have an active resale link.
-    /// 
+    ///
     /// # Returns
     /// A `Result` containing a vector of `EncounterRecord` instances with active resale links if the retrieval was successful,
     /// or a `StorageError` if there was an error during the retrieval process.
@@ -113,9 +112,9 @@ impl StoreEncounters for EncounterStore {
         })()
         .map_err(|e| e.to_string())
     }
-    
+
     /// Looks up a single record in the store by its stable ID, which is derived from the encounter's title and date.
-    /// 
+    ///
     /// # Arguments
     /// * `title` - The title of the encounter to look up
     /// * `date` - The date of the encounter to look up
@@ -140,7 +139,7 @@ impl StoreEncounters for EncounterStore {
     }
 
     /// Retrieves all records from the store, regardless of their resale link status.
-    /// 
+    ///
     /// # Returns
     /// A `Result` containing a vector of all `EncounterRecord` instances in the store if the retrieval was successful,
     /// or a `StorageError` if there was an error during the retrieval process.

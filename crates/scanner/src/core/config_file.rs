@@ -210,9 +210,12 @@ impl TryFrom<ScanConfig> for ScanConfigRaw {
             MatchNature::Other => NatureRaw::Other,
         };
 
-
         let filter_encouter = config.filter_chain.as_ref().and_then(|chain| {
-            chain.encounter_title().map(|name| FilterDescriptor::Encounter { name: Some(name.to_string()) })
+            chain
+                .encounter_title()
+                .map(|name| FilterDescriptor::Encounter {
+                    name: Some(name.to_string()),
+                })
         });
 
         let filter_seat = config.filter_chain.as_ref().and_then(|chain| {
@@ -221,7 +224,12 @@ impl TryFrom<ScanConfig> for ScanConfigRaw {
             let row = chain.seat_row().map(|s| s.to_string());
             let min_consecutive = chain.side_by_side();
             if category.is_some() || bloc.is_some() || row.is_some() || min_consecutive.is_some() {
-                Some(FilterDescriptor::Seat { category, bloc, row, min_consecutive })
+                Some(FilterDescriptor::Seat {
+                    category,
+                    bloc,
+                    row,
+                    min_consecutive,
+                })
             } else {
                 None
             }
@@ -229,19 +237,26 @@ impl TryFrom<ScanConfig> for ScanConfigRaw {
 
         let filter_price = config.filter_chain.as_ref().and_then(|chain| {
             if chain.price_min().is_some() || chain.price_max().is_some() {
-                Some(FilterDescriptor::Price { min: chain.price_min(), max: chain.price_max() })
+                Some(FilterDescriptor::Price {
+                    min: chain.price_min(),
+                    max: chain.price_max(),
+                })
             } else {
                 None
             }
         });
 
-        let filter_chain = if filter_encouter.is_none() && filter_seat.is_none() && filter_price.is_none() {
-            None
-        } else {
-            Some(vec![filter_encouter, filter_price, filter_seat].into_iter().flatten().collect())
-        };
-
-
+        let filter_chain =
+            if filter_encouter.is_none() && filter_seat.is_none() && filter_price.is_none() {
+                None
+            } else {
+                Some(
+                    vec![filter_encouter, filter_price, filter_seat]
+                        .into_iter()
+                        .flatten()
+                        .collect(),
+                )
+            };
 
         // Note: we don't convert the filter chain back to raw descriptors here,
         // as it's only needed for writing back to JSON (see `write_to_file`).
@@ -287,30 +302,36 @@ impl TryFrom<ScanConfigRaw> for ScanConfig {
         };
 
         let filter_chain = raw.filter_chain.map(|descriptors| {
-            let chain = descriptors
-                .into_iter()
-                .fold(FilterChain::new(), |chain, desc| match desc {
-                    FilterDescriptor::Price { min, max } => chain.add(PriceFilter::new(min, max)),
-                    FilterDescriptor::Encounter { name } => chain.add(EncounterFilter::new(name)),
-                    FilterDescriptor::Seat {
-                        category,
-                        bloc,
-                        row,
-                        min_consecutive,
-                    } => {
-                        let composition = if category.is_some() || bloc.is_some() || row.is_some() {
-                            Some(SeatComposition {
-                                category: category.unwrap_or_default(),
-                                bloc: bloc.unwrap_or_default(),
-                                row: row.unwrap_or_default(),
-                                seat_number: 0,
-                            })
-                        } else {
-                            None
-                        };
-                        chain.add(SeatPositionFilter::new(composition, min_consecutive))
-                    }
-                });
+            let chain =
+                descriptors
+                    .into_iter()
+                    .fold(FilterChain::new(), |chain, desc| match desc {
+                        FilterDescriptor::Price { min, max } => {
+                            chain.add(PriceFilter::new(min, max))
+                        }
+                        FilterDescriptor::Encounter { name } => {
+                            chain.add(EncounterFilter::new(name))
+                        }
+                        FilterDescriptor::Seat {
+                            category,
+                            bloc,
+                            row,
+                            min_consecutive,
+                        } => {
+                            let composition =
+                                if category.is_some() || bloc.is_some() || row.is_some() {
+                                    Some(SeatComposition {
+                                        category: category.unwrap_or_default(),
+                                        bloc: bloc.unwrap_or_default(),
+                                        row: row.unwrap_or_default(),
+                                        seat_number: 0,
+                                    })
+                                } else {
+                                    None
+                                };
+                            chain.add(SeatPositionFilter::new(composition, min_consecutive))
+                        }
+                    });
             Arc::new(chain)
         });
 

@@ -1,7 +1,7 @@
 use parser::core::encounter::Encounter;
 
 /// A trait for filtering encounter bas on specific criteria.
-/// 
+///
 /// Implementors of this trait can define their own filtering logic to return a subset of encounters that match certain conditions.
 pub trait Filter<T> {
     fn apply(&self, item: &T) -> Vec<Encounter>;

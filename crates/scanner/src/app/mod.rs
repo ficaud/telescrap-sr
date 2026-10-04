@@ -1,2 +1,2 @@
-pub mod scan_task;
 pub mod diff;
+pub mod scan_task;

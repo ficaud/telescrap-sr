@@ -1,6 +1,6 @@
 /// This module defines the SeatPositionFilter, which is a specific implementation of the Filter trait
 /// that allows filtering encounters based on the position of available seats.
-/// 
+///
 /// It can filter by specific seat composition (category, bloc, row) and/or by a minimum number of consecutive seats.
 use parser::core::{
     encounter::Encounter,
@@ -23,18 +23,21 @@ impl SeatPositionFilter {
     /// # Arguments
     /// - `composition`: Optional criteria for seat composition (category, bloc, row). If None, all compositions are considered.
     /// - `min_consecutive`: Optional minimum number of consecutive seats required. If None, no minimum is enforced.
-    /// 
+    ///
     /// # Return
     /// A new instance of SeatPositionFilter configured with the specified criteria.
     pub fn new(composition: Option<SeatComposition>, min_consecutive: Option<usize>) -> Self {
-        SeatPositionFilter { composition, min_consecutive }
+        SeatPositionFilter {
+            composition,
+            min_consecutive,
+        }
     }
 
     /// Checks if a given seat matches the composition criteria of the filter.
     ///
     /// # Arguments
     /// - `seat`: The seat to check against the filter's composition criteria.
-    /// 
+    ///
     /// # Return
     /// `true` if the seat matches the composition criteria or if no composition criteria is set; `false` otherwise.
     pub fn match_seat_composition(&self, seat: &Seat) -> bool {
@@ -42,8 +45,12 @@ impl SeatPositionFilter {
             None => true,
             Some(comp) => {
                 let c = &seat.seat_info.composition;
-                (comp.category.is_empty() || c.category.to_lowercase().contains(&comp.category.to_lowercase()))
-                    && (comp.bloc.is_empty() || c.bloc.to_lowercase().contains(&comp.bloc.to_lowercase()))
+                (comp.category.is_empty()
+                    || c.category
+                        .to_lowercase()
+                        .contains(&comp.category.to_lowercase()))
+                    && (comp.bloc.is_empty()
+                        || c.bloc.to_lowercase().contains(&comp.bloc.to_lowercase()))
                     && (comp.row.is_empty() || c.row.to_lowercase() == comp.row.to_lowercase())
                     && (comp.seat_number == 0 || c.seat_number == comp.seat_number)
             }
@@ -54,12 +61,14 @@ impl SeatPositionFilter {
     ///
     /// # Arguments
     /// - `seats`: A slice of seats to be grouped into consecutive groups.
-    /// 
+    ///
     /// # Return
     /// A vector of vectors, where each inner vector contains seats from the same row whose
     /// seat numbers differ by 2, matching the current adjacency rule used by the venue.
     pub fn consecutive_seats(seats: &[Seat]) -> Vec<Vec<Seat>> {
-        if seats.is_empty() { return vec![]; }
+        if seats.is_empty() {
+            return vec![];
+        }
 
         let mut sorted: Vec<&Seat> = seats.iter().collect();
         sorted.sort_by(|left, right| {
@@ -100,29 +109,37 @@ impl SeatPositionFilter {
 /// allowing it to be used in a filter chain to process encounters based on seat position criteria.
 impl Filter<Vec<Encounter>> for SeatPositionFilter {
     fn seat_category(&self) -> Option<&str> {
-        self.composition.as_ref().map(|c| c.category.as_str()).filter(|s| !s.is_empty())
+        self.composition
+            .as_ref()
+            .map(|c| c.category.as_str())
+            .filter(|s| !s.is_empty())
     }
 
     fn seat_bloc(&self) -> Option<&str> {
-        self.composition.as_ref().map(|c| c.bloc.as_str()).filter(|s| !s.is_empty())
+        self.composition
+            .as_ref()
+            .map(|c| c.bloc.as_str())
+            .filter(|s| !s.is_empty())
     }
 
     fn seat_row(&self) -> Option<&str> {
-        self.composition.as_ref().map(|c| c.row.as_str()).filter(|s| !s.is_empty())
+        self.composition
+            .as_ref()
+            .map(|c| c.row.as_str())
+            .filter(|s| !s.is_empty())
     }
 
     fn side_by_side(&self) -> Option<usize> {
         self.min_consecutive
     }
 
-
     /// Applies the seat position filter to a list of encounters,
     /// returning only those encounters that have seats matching the specified composition
     /// and minimum consecutive criteria.
-    /// 
+    ///
     /// # Arguments
     /// - `encounters`: A reference to a vector of encounters to be filtered.
-    /// 
+    ///
     /// # Return
     /// A vector of encounters that match the seat position criteria defined in the filter.
     fn apply(&self, encounters: &Vec<Encounter>) -> Vec<Encounter> {
@@ -131,7 +148,6 @@ impl Filter<Vec<Encounter>> for SeatPositionFilter {
             .iter()
             .filter_map(|encounter| {
                 if let Some(seats) = &encounter.seats {
-
                     // Filter matchin seats based on composition criteria
                     let matching_seats: Vec<_> = seats
                         .iter()

@@ -8,19 +8,36 @@ use parser::{
     },
     interface::storage::EncounterStore,
 };
-use scanner::{controller::notify::Notify, core::scan};
 use scanner::core::app_state::AppState;
 use scanner::interface::runner::ScannerHandle;
+use scanner::{controller::notify::Notify, core::scan};
 use telegram_notifier::TelegramNotifier;
 use tokio::sync::watch;
+
+fn init_logger() {
+    use std::io::Write;
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info"))
+        .format(|buf, record| {
+            let now = chrono::Utc::now().with_timezone(&chrono_tz::Europe::Paris);
+            writeln!(
+                buf,
+                "[{} {}] {}",
+                now.format("%Y-%m-%d %H:%M:%S"),
+                record.level(),
+                record.args()
+            )
+        })
+        .init();
+}
 
 #[tokio::main]
 async fn main() {
     dotenv::dotenv().ok();
+    init_logger();
 
     // Load Telegram bot token and chat ID from environment variables
-    let bot_token = std::env::var("TELEGRAM_BOT_TOKEN")
-        .expect("TELEGRAM_BOT_TOKEN non défini dans .env");
+    let bot_token =
+        std::env::var("TELEGRAM_BOT_TOKEN").expect("TELEGRAM_BOT_TOKEN non défini dans .env");
     let chat_id: i64 = std::env::var("TELEGRAM_CHAT_ID")
         .expect("TELEGRAM_CHAT_ID non défini dans .env")
         .parse()
@@ -38,9 +55,8 @@ async fn main() {
     // ------- Step 2 : Create the watch channel -------
     // Create the watch channel — config_tx allows sending config updates at runtime
     let (config_tx, config_rx) = watch::channel(scan_config);
-     // Channel for sharing scanner state with admin panel
+    // Channel for sharing scanner state with admin panel
     let (state_tx, state_rx) = watch::channel(AppState::Running);
-
 
     // ------- Step 3 : Start scanner and admin panel task -------
     // Start the scanner with the config receiver and notifier

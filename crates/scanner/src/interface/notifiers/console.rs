@@ -7,19 +7,23 @@ pub struct ConsoleNotifier;
 
 impl Notify for ConsoleNotifier {
     fn send(&self, message: &str) {
-        println!("[NOTIF] {}\n-----------------", message);
+        log::info!("[NOTIF] {}\n-----------------", message);
     }
 
     fn send_photo(&self, photo_url: &str, caption: &str) {
-        println!("[NOTIF PHOTO] {}\n{}\n-----------------", caption, photo_url);
+        log::info!(
+            "[NOTIF PHOTO] {}\n{}\n-----------------",
+            caption,
+            photo_url
+        );
     }
 
     fn send_and_pin(&self, message: &str) -> Option<i32> {
-        println!("[NOTIF PINNED] {}\n-----------------", message);
+        log::info!("[NOTIF PINNED] {}\n-----------------", message);
         None
     }
-        
+
     fn edit_message(&self, _message_id: i32, message: &str) {
-        println!("[NOTIF EDITED] {}\n-----------------", message);
+        log::info!("[NOTIF EDITED] {}\n-----------------", message);
     }
 }

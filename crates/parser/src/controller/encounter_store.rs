@@ -1,8 +1,8 @@
+use crate::core::encounter::Encounter;
 /// This module defines the EncounterRecord struct, which represents a stable representation of an encounter as stored in the database,
 /// and the StoreEncounters trait, which provides methods for synchronizing parsed encounters with the store,
 /// retrieving active resale links, looking up records by stable ID, and retrieving all records from the store.
 use serde::{Deserialize, Serialize};
-use crate::core::encounter::Encounter;
 
 /// Stable representation of an encounter as stored in the database.
 ///

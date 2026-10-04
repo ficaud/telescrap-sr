@@ -1,6 +1,6 @@
 /// This module defines the data structures related to seats in the context of rugby matches, including
 /// seat composition, seat information, and actions that can be performed on a seat (such as adding it to a shopping cart).
-/// 
+///
 
 /// SeatComposition represents the details of a seat's location and category, including the category, access type, row, and seat number.
 #[derive(Debug, Clone)]

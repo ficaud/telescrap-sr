@@ -1,16 +1,13 @@
 use axum::{
-    Form,
-    Router,
+    Form, Router,
     extract::State,
     response::Html,
     routing::{get, get_service, post},
 };
-use filter::filter::filter_chain::FilterChain;
 use filter::filter::config::{
-    encounter::EncounterFilter,
-    price::PriceFilter,
-    seat::SeatPositionFilter,
+    encounter::EncounterFilter, price::PriceFilter, seat::SeatPositionFilter,
 };
+use filter::filter::filter_chain::FilterChain;
 use parser::core::encounter::MatchNature;
 use scanner::core::app_state::AppState as ScannerAppState;
 use scanner::core::scan::{ScanConfig, ScanMode};
@@ -88,7 +85,6 @@ fn extract_root_app_version() -> String {
     "unknown".to_string()
 }
 
-
 /// Renders the admin page with the current scanner configuration pre-filled in the form.
 ///
 /// # Arguments
@@ -113,22 +109,57 @@ async fn index(State(state): State<AppState>) -> Html<String> {
         ""
     };
 
-    let sel_passive    = if config.mode == ScanMode::PassiveScan    { "selected" } else { "" };
-    let sel_aggressive = if config.mode == ScanMode::AggressiveScan { "selected" } else { "" };
-    let sel_rugby      = if config.nature == MatchNature::Rugby      { "selected" } else { "" };
-    let sel_basketball = if config.nature == MatchNature::Basketball { "selected" } else { "" };
-    let sel_other      = if config.nature == MatchNature::Other      { "selected" } else { "" };
+    let sel_passive = if config.mode == ScanMode::PassiveScan {
+        "selected"
+    } else {
+        ""
+    };
+    let sel_aggressive = if config.mode == ScanMode::AggressiveScan {
+        "selected"
+    } else {
+        ""
+    };
+    let sel_rugby = if config.nature == MatchNature::Rugby {
+        "selected"
+    } else {
+        ""
+    };
+    let sel_basketball = if config.nature == MatchNature::Basketball {
+        "selected"
+    } else {
+        ""
+    };
+    let sel_other = if config.nature == MatchNature::Other {
+        "selected"
+    } else {
+        ""
+    };
 
-    let chain           = config.filter_chain.as_deref();
-    let price_min       = chain.and_then(|c| c.price_min()).map(|v| v.to_string()).unwrap_or_default();
-    let price_max       = chain.and_then(|c| c.price_max()).map(|v| v.to_string()).unwrap_or_default();
-    let seat_category   = chain.and_then(|c| c.seat_category()).unwrap_or("").to_string();
-    let seat_bloc       = chain.and_then(|c| c.seat_bloc()).unwrap_or("").to_string();
-    let seat_row        = chain.and_then(|c| c.seat_row()).unwrap_or("").to_string();
-    let side_by_side    = chain.and_then(|c| c.side_by_side()).map(|v| v.to_string()).unwrap_or_default();
-    let match_title     = chain.and_then(|c| c.encounter_title()).unwrap_or("").to_string();
-    let chk_preview     = if config.is_preview { "checked" } else { "" };
-    let chk_proxy       = if config.proxy_enabled { "checked" } else { "" };
+    let chain = config.filter_chain.as_deref();
+    let price_min = chain
+        .and_then(|c| c.price_min())
+        .map(|v| v.to_string())
+        .unwrap_or_default();
+    let price_max = chain
+        .and_then(|c| c.price_max())
+        .map(|v| v.to_string())
+        .unwrap_or_default();
+    let seat_category = chain
+        .and_then(|c| c.seat_category())
+        .unwrap_or("")
+        .to_string();
+    let seat_bloc = chain.and_then(|c| c.seat_bloc()).unwrap_or("").to_string();
+    let seat_row = chain.and_then(|c| c.seat_row()).unwrap_or("").to_string();
+    let side_by_side = chain
+        .and_then(|c| c.side_by_side())
+        .map(|v| v.to_string())
+        .unwrap_or_default();
+    let match_title = chain
+        .and_then(|c| c.encounter_title())
+        .unwrap_or("")
+        .to_string();
+    let chk_preview = if config.is_preview { "checked" } else { "" };
+    let chk_proxy = if config.proxy_enabled { "checked" } else { "" };
 
     let html = INDEX_HTML
         .replace("{interval}", &interval.to_string())
@@ -181,13 +212,22 @@ async fn update_config(
         _ => MatchNature::Rugby,
     };
 
-    let price_min       = form.price_min.filter(|s| !s.is_empty()).and_then(|s| s.parse::<f64>().ok());
-    let price_max       = form.price_max.filter(|s| !s.is_empty()).and_then(|s| s.parse::<f64>().ok());
-    let seat_category   = form.seat_category.filter(|s| !s.is_empty());
-    let seat_bloc       = form.seat_bloc.filter(|s| !s.is_empty());
-    let seat_row        = form.seat_row.filter(|s| !s.is_empty());
-    let side_by_side    = form.side_by_side.filter(|s| !s.is_empty()).and_then(|s| s.parse::<u64>().ok());
-    let match_title     = form.match_title.filter(|s| !s.is_empty());
+    let price_min = form
+        .price_min
+        .filter(|s| !s.is_empty())
+        .and_then(|s| s.parse::<f64>().ok());
+    let price_max = form
+        .price_max
+        .filter(|s| !s.is_empty())
+        .and_then(|s| s.parse::<f64>().ok());
+    let seat_category = form.seat_category.filter(|s| !s.is_empty());
+    let seat_bloc = form.seat_bloc.filter(|s| !s.is_empty());
+    let seat_row = form.seat_row.filter(|s| !s.is_empty());
+    let side_by_side = form
+        .side_by_side
+        .filter(|s| !s.is_empty())
+        .and_then(|s| s.parse::<u64>().ok());
+    let match_title = form.match_title.filter(|s| !s.is_empty());
 
     let position = if seat_category.is_some() || seat_bloc.is_some() || seat_row.is_some() {
         Some(parser::core::seat::SeatComposition {
@@ -220,9 +260,14 @@ async fn update_config(
     }
     new_config.filter_chain = Some(Arc::new(chain));
 
-    println!("[DEBUG] Config mise à jour : interval={}s, nature={:?}", new_config.interval, new_config.nature);
+    log::info!(
+        "[DEBUG] Config mise à jour : interval={}s, nature={:?}",
+        new_config.interval,
+        new_config.nature
+    );
 
-    scanner::core::config_file::write_to_file(&new_config, "config_scan.json").unwrap_or_else(|e| eprintln!("❌ Impossible d'écrire config_scan.json : {}", e));
+    scanner::core::config_file::write_to_file(&new_config, "config_scan.json")
+        .unwrap_or_else(|e| log::error!("❌ Impossible d'écrire config_scan.json : {}", e));
     state.config_tx.send(new_config).ok();
 
     Html(CONFIG_UPDATED_HTML.to_string())
@@ -287,6 +332,6 @@ pub async fn run_with_state(
 
     let bind_addr = format!("0.0.0.0:{}", port);
     let listener = TcpListener::bind(&bind_addr).await.unwrap();
-    println!("[TCP] Server as start on http://localhost:{}", port);
+    log::info!("[TCP] Server as start on http://localhost:{}", port);
     axum::serve(listener, app).await.unwrap();
 }

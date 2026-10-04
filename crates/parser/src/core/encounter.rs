@@ -1,11 +1,11 @@
+use crate::core::club::ClubType;
 /// This module defines the Encounter struct, which represents a sports match or event,
 /// including its title, date, nature, and associated seats.
 /// It also includes the MatchNature enum to categorize the type of match (e.g., rugby, basketball).
 use crate::core::seat::Seat;
-use crate::core::club::ClubType;
-use std::sync::atomic::{AtomicU64, Ordering};
 use chrono::{Datelike, NaiveDate, NaiveDateTime, Utc};
 use chrono_tz::Europe::Paris;
+use std::sync::atomic::{AtomicU64, Ordering};
 /// MatchNature is an enumeration that categorizes the type of match or event, such as rugby, basketball, or other.
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum MatchNature {
@@ -16,7 +16,6 @@ pub enum MatchNature {
 
 /// Implementation of the MatchNature enum, including a method to determine the match nature from a title string.
 impl MatchNature {
-
     /// Determines the MatchNature based on the content of the title string.
     ///
     /// # Arguments
@@ -89,7 +88,13 @@ impl Encounter {
     /// * `resale_link` - An optional resale link for the encounter's tickets
     /// # Returns
     /// A new instance of the Encounter struct with the provided information and a unique ID
-    pub fn new(club_type: ClubType, title: String, date: String, nature: MatchNature, resale_link: Option<String>) -> Self {
+    pub fn new(
+        club_type: ClubType,
+        title: String,
+        date: String,
+        nature: MatchNature,
+        resale_link: Option<String>,
+    ) -> Self {
         Self {
             id: ENCOUNTER_COUNTER.fetch_add(1, Ordering::Relaxed),
             club_type,
@@ -165,10 +170,18 @@ fn parse_french_date(s: &str) -> Option<NaiveDateTime> {
 
     // Map French month names to numbers (1-based)
     let months: &[(&str, u32)] = &[
-        ("janvier", 1), ("février", 2), ("mars", 3),
-        ("avril", 4), ("mai", 5), ("juin", 6),
-        ("juillet", 7), ("août", 8), ("septembre", 9),
-        ("octobre", 10), ("novembre", 11), ("décembre", 12),
+        ("janvier", 1),
+        ("février", 2),
+        ("mars", 3),
+        ("avril", 4),
+        ("mai", 5),
+        ("juin", 6),
+        ("juillet", 7),
+        ("août", 8),
+        ("septembre", 9),
+        ("octobre", 10),
+        ("novembre", 11),
+        ("décembre", 12),
     ];
 
     // 1) Normalize time: "21h05" → "21:05"
@@ -206,7 +219,9 @@ fn parse_french_date(s: &str) -> Option<NaiveDateTime> {
         if word.contains(':') && word.len() <= 5 {
             let parts: Vec<&str> = word.split(':').collect();
             if parts.len() == 2 && parts[0].len() <= 2 && parts[1].len() == 2 {
-                if parts[0].chars().all(|c| c.is_ascii_digit()) && parts[1].chars().all(|c| c.is_ascii_digit()) {
+                if parts[0].chars().all(|c| c.is_ascii_digit())
+                    && parts[1].chars().all(|c| c.is_ascii_digit())
+                {
                     time_part = Some(word);
                 }
             }
@@ -225,10 +240,10 @@ fn parse_french_date(s: &str) -> Option<NaiveDateTime> {
         NaiveDateTime::parse_from_str(
             &format!("{:04}-{:02}-{:02} {}", year, month, day, time),
             "%Y-%m-%d %H:%M",
-        ).ok()
+        )
+        .ok()
     } else {
-        NaiveDate::from_ymd_opt(year, month, day)
-            .map(|d| d.and_hms_opt(0, 0, 0).unwrap())
+        NaiveDate::from_ymd_opt(year, month, day).map(|d| d.and_hms_opt(0, 0, 0).unwrap())
     }
 }
 
@@ -252,13 +267,12 @@ fn parse_french_day(word: &str) -> Option<u32> {
     word.parse::<u32>().ok()
 }
 
-
 /// Command to launch these tests :  cargo test -p parser --lib encounter -- --nocapture
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::Timelike;
     use crate::core::club::ClubType;
+    use chrono::Timelike;
 
     fn enc(date: &str) -> Encounter {
         Encounter::new(
@@ -330,8 +344,16 @@ mod tests {
         let e = enc("samedi 6 juin à 21h05");
         let formatted = e.formatted_date();
         // Should contain the date in YYYY-MM-DD HH:MM format
-        assert!(formatted.contains("06-06"), "Expected month-day in formatted date, got: {}", formatted);
-        assert!(formatted.contains("21:05"), "Expected time in formatted date, got: {}", formatted);
+        assert!(
+            formatted.contains("06-06"),
+            "Expected month-day in formatted date, got: {}",
+            formatted
+        );
+        assert!(
+            formatted.contains("21:05"),
+            "Expected time in formatted date, got: {}",
+            formatted
+        );
     }
 
     #[test]
@@ -355,7 +377,10 @@ mod tests {
     #[test]
     fn date_passed_returns_false_when_unparseable() {
         let e = enc("");
-        assert!(!e.date_passed(), "Empty date should not be considered passed");
+        assert!(
+            !e.date_passed(),
+            "Empty date should not be considered passed"
+        );
     }
 
     #[test]

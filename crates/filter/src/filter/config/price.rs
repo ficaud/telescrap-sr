@@ -18,11 +18,14 @@ impl PriceFilter {
     /// # Arguments
     /// - `min_price`: Optional minimum price. If None, no minimum is enforced.
     /// - `max_price`: Optional maximum price. If None, no maximum is enforced.
-    /// 
+    ///
     /// # Return
     /// A new instance of PriceFilter configured with the specified criteria.
     pub fn new(min_price: Option<f64>, max_price: Option<f64>) -> Self {
-        PriceFilter { min_price, max_price }
+        PriceFilter {
+            min_price,
+            max_price,
+        }
     }
 }
 
@@ -37,35 +40,45 @@ impl Filter<Vec<Encounter>> for PriceFilter {
         self.max_price
     }
 
-
     /// Applies the price filter to a list of encounters,
     /// returning only those encounters that have seats within the specified price range.
-    /// 
+    ///
     /// # Arguments
     /// - `encounters`: A reference to a vector of encounters to be filtered.
-    /// 
+    ///
     /// # Return
     /// A vector of encounters that match the price criteria defined in the filter.
     fn apply(&self, encounters: &Vec<Encounter>) -> Vec<Encounter> {
-        encounters.iter().filter_map(|encounter| {
-            let matching_seats: Vec<_> = encounter.seats.as_ref()?.iter().filter(|seat| {
-                let price_str: String = seat.price.chars()
-                    .filter(|c| c.is_ascii_digit() || *c == '.' || *c == ',')
-                    .collect::<String>()
-                    .replace(',', ".");
-                price_str.parse::<f64>().map_or(false, |price| {
-                    (self.min_price.is_none() || price >= self.min_price.unwrap())
-                        && (self.max_price.is_none() || price <= self.max_price.unwrap())
-                })
-            }).cloned().collect();
+        encounters
+            .iter()
+            .filter_map(|encounter| {
+                let matching_seats: Vec<_> = encounter
+                    .seats
+                    .as_ref()?
+                    .iter()
+                    .filter(|seat| {
+                        let price_str: String = seat
+                            .price
+                            .chars()
+                            .filter(|c| c.is_ascii_digit() || *c == '.' || *c == ',')
+                            .collect::<String>()
+                            .replace(',', ".");
+                        price_str.parse::<f64>().map_or(false, |price| {
+                            (self.min_price.is_none() || price >= self.min_price.unwrap())
+                                && (self.max_price.is_none() || price <= self.max_price.unwrap())
+                        })
+                    })
+                    .cloned()
+                    .collect();
 
-            if matching_seats.is_empty() {
-                return None;
-            }
+                if matching_seats.is_empty() {
+                    return None;
+                }
 
-            let mut encounter = encounter.clone();
-            encounter.seats = Some(matching_seats);
-            Some(encounter)
-        }).collect()
+                let mut encounter = encounter.clone();
+                encounter.seats = Some(matching_seats);
+                Some(encounter)
+            })
+            .collect()
     }
 }

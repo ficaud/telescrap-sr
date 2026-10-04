@@ -1,5 +1,5 @@
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::LazyLock;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use super::proxy_core::ProxyManager;
 
@@ -28,9 +28,9 @@ pub static PROXY_ENABLED: AtomicBool = AtomicBool::new(true);
 pub fn set_proxy_enabled(enabled: bool) {
     PROXY_ENABLED.store(enabled, Ordering::Relaxed);
     if enabled {
-        println!("[PROXY] Proxy usage enabled");
+        log::info!("[PROXY] Proxy usage enabled");
     } else {
-        println!("[PROXY] Proxy usage disabled — using direct connections");
+        log::info!("[PROXY] Proxy usage disabled — using direct connections");
     }
 }
 
@@ -42,12 +42,18 @@ pub fn set_proxy_enabled(enabled: bool) {
 ///
 /// # Return
 /// A `Result<T, Box<dyn std::error::Error>>` containing the successful result of `f` or an error if all proxies are exhausted.
-pub fn retry_with_proxy_mode<F, T>(mut f: F, proxy_mode: ProxyMode) -> Result<T, Box<dyn std::error::Error>>
+pub fn retry_with_proxy_mode<F, T>(
+    mut f: F,
+    proxy_mode: ProxyMode,
+) -> Result<T, Box<dyn std::error::Error>>
 where
     F: FnMut(Option<&str>) -> Result<T, Box<dyn std::error::Error>>,
 {
     // If proxy usage is disabled or the pool is empty, skip directly.
-    if proxy_mode == ProxyMode::Disabled || !PROXY_ENABLED.load(Ordering::Relaxed) || PROXY_MANAGER.total_count() == 0 {
+    if proxy_mode == ProxyMode::Disabled
+        || !PROXY_ENABLED.load(Ordering::Relaxed)
+        || PROXY_MANAGER.total_count() == 0
+    {
         return f(None);
     }
 
@@ -58,7 +64,7 @@ where
     } {
         // Extract and display ip:port from the proxy URL (e.g. "http://1.2.3.4:8080")
         let display = proxy_url.split("://").nth(1).unwrap_or(&proxy_url);
-        println!("[PROXY] Using proxy: {}", display);
+        log::info!("[PROXY] Using proxy: {}", display);
 
         match f(Some(&proxy_url)) {
             Ok(val) => return Ok(val),

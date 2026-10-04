@@ -1,38 +1,36 @@
-/// This module manages the retrieval of match and seat information for rugby clubs, as well as interactions with the shopping cart.
-///
-/// It provides the main parser functions that should be used in the rest of the application to get matches and seats informations
-use crate::{controller::encounter_store::StoreEncounters, core::{
-    club::{
-        Club,
-        ClubType
-    }, encounter::{
-        Encounter,
-        MatchNature,
-    }, seat::{Seat, SeatComposition}
-}};
-use crate::controller::html_extract::FetchHtml;
 use crate::app::clubs::{
-    parsers::{
-        ParseSeat,
-        ParseMatch,
-        ParseSeatPreview,
-    },
     larochelle::{
-        parse_match::LarochellMatchParser,
-        parse_seat::LarochellSeatParser,
+        parse_match::LarochellMatchParser, parse_seat::LarochellSeatParser,
         parse_seat_preview::LarochellSeatPreviewParser,
-    }
+    },
+    parsers::{ParseMatch, ParseSeat, ParseSeatPreview},
 };
+use crate::controller::html_extract::FetchHtml;
 use crate::interface::curl::proxy::ProxyMode;
 use crate::interface::curl::web::{WebClient, connect_and_add_to_cart};
 use crate::interface::storage::EncounterStore;
+/// This module manages the retrieval of match and seat information for rugby clubs, as well as interactions with the shopping cart.
+///
+/// It provides the main parser functions that should be used in the rest of the application to get matches and seats informations
+use crate::{
+    controller::encounter_store::StoreEncounters,
+    core::{
+        club::{Club, ClubType},
+        encounter::{Encounter, MatchNature},
+        seat::{Seat, SeatComposition},
+    },
+};
 
 fn matchs_db_path() -> String {
     std::env::var("MATCHS_DB_PATH").unwrap_or_else(|_| "matchs.db".to_string())
 }
 
 /// Connects to the shop with the given seat information and adds it to the cart.
-pub fn connect_and_add_seat_to_cart(email: String, password: String, seat: Seat) -> Result<(), Box<dyn std::error::Error>> {
+pub fn connect_and_add_seat_to_cart(
+    email: String,
+    password: String,
+    seat: Seat,
+) -> Result<(), Box<dyn std::error::Error>> {
     connect_and_add_to_cart(&email, &password, &seat.actions)
 }
 
@@ -40,7 +38,10 @@ pub fn connect_and_add_seat_to_cart(email: String, password: String, seat: Seat)
 pub fn print_db_contents() {
     let db = match EncounterStore::open(matchs_db_path()) {
         Ok(db) => db,
-        Err(e) => { eprintln!("Failed to open database: {}", e); return; }
+        Err(e) => {
+            log::error!("Failed to open database: {}", e);
+            return;
+        }
     };
     match db.get_all() {
         Ok(records) if records.is_empty() => println!("Database is empty."),
@@ -49,7 +50,11 @@ pub fn print_db_contents() {
             for r in records {
                 println!(
                     "  [{active}] {title} | {date} | club: {club} | link: {link}",
-                    active = if r.resale_active { "active" } else { "inactive" },
+                    active = if r.resale_active {
+                        "active"
+                    } else {
+                        "inactive"
+                    },
                     title = r.title,
                     date = r.date,
                     club = r.club_type,
@@ -57,7 +62,7 @@ pub fn print_db_contents() {
                 );
             }
         }
-        Err(e) => eprintln!("Storage error: {}", e),
+        Err(e) => log::error!("Storage error: {}", e),
     }
 }
 
@@ -78,7 +83,6 @@ pub fn get_seats_from_matches(club: Club, match_type: MatchNature) -> Vec<Encoun
         let mut cached_results: Vec<Encounter> = Vec::new();
 
         for record in &records {
-
             let encounter = Encounter::new(
                 Club::get_type_from_name(&record.club_type),
                 record.title.clone(),
@@ -93,9 +97,10 @@ pub fn get_seats_from_matches(club: Club, match_type: MatchNature) -> Vec<Encoun
                 let has_seats = e.seats.as_ref().map_or(false, |s| !s.is_empty());
                 if has_seats {
                     // Cache hit — keep it active and collect
-                    eprintln!(
+                    log::info!(
                         "[CACHE] Reusing cached resale link for '{}' ({}): {} seats found",
-                        record.title, record.date,
+                        record.title,
+                        record.date,
                         e.seats.as_ref().map_or(0, |s| s.len()),
                     );
                     cached_results.extend(with_seats);
@@ -103,9 +108,10 @@ pub fn get_seats_from_matches(club: Club, match_type: MatchNature) -> Vec<Encoun
                     // Only mark the link as inactive if the match date has passed.
                     // If the match is still in the future, keep it active so we retry.
                     if e.date_passed() {
-                        eprintln!(
+                        log::info!(
                             "[CACHE] Match '{}' ({}) has passed, disabling cached link",
-                            record.title, record.date,
+                            record.title,
+                            record.date,
                         );
                         let stale = Encounter::new(
                             Club::get_type_from_name(&record.club_type),
@@ -115,12 +121,13 @@ pub fn get_seats_from_matches(club: Club, match_type: MatchNature) -> Vec<Encoun
                             None,
                         );
                         if let Err(e) = db.upsert(&stale) {
-                            eprintln!("Storage error while marking stale: {}", e);
+                            log::error!("Storage error while marking stale: {}", e);
                         }
                     } else {
-                        eprintln!(
+                        log::info!(
                             "[CACHE] No seats for '{}' ({}), but match not passed yet — keeping link active",
-                            record.title, record.date,
+                            record.title,
+                            record.date,
                         );
                     }
                 }
@@ -132,26 +139,35 @@ pub fn get_seats_from_matches(club: Club, match_type: MatchNature) -> Vec<Encoun
         }
     }
 
-    println!("[CACHE] No active resale links found in DB, falling back to web scraping for matches.");
+    log::info!(
+        "[CACHE] No active resale links found in DB, falling back to web scraping for matches."
+    );
     // Priority 2: fallback — parse from web (original behavior)
     let matches = get_matches_from_type_and_club(match_type, club);
 
-    let matches: Vec<Encounter> = matches.into_iter().map(|mut encounter| {
-        // If the page didn't return a resale link, check DB for an existing active one
-        if encounter.resale_link.is_none() {
-            if let Ok(Some(record)) = db.get_by_stable_id(&encounter.title, &encounter.date) {
-                println!("[DB] Found existing record for '{}' ({}), using cached resale link.", record.title, record.date);
-                if record.resale_active {
-                    encounter.resale_link = Some(record.resale_link);
+    let matches: Vec<Encounter> = matches
+        .into_iter()
+        .map(|mut encounter| {
+            // If the page didn't return a resale link, check DB for an existing active one
+            if encounter.resale_link.is_none() {
+                if let Ok(Some(record)) = db.get_by_stable_id(&encounter.title, &encounter.date) {
+                    log::info!(
+                        "[DB] Found existing record for '{}' ({}), using cached resale link.",
+                        record.title,
+                        record.date
+                    );
+                    if record.resale_active {
+                        encounter.resale_link = Some(record.resale_link);
+                    }
                 }
             }
-        }
-        // Upsert the (possibly enriched) encounter
-        if let Err(e) = db.upsert(&encounter) {
-            eprintln!("Storage error for '{}': {}", encounter.title, e);
-        }
-        encounter
-    }).collect();
+            // Upsert the (possibly enriched) encounter
+            if let Err(e) = db.upsert(&encounter) {
+                log::error!("Storage error for '{}': {}", encounter.title, e);
+            }
+            encounter
+        })
+        .collect();
 
     // Change the mode to sticky to avoid changing th proxy here
     client.set_proxy_mode(ProxyMode::Sticky);
@@ -169,7 +185,11 @@ pub fn get_seats_from_matches(club: Club, match_type: MatchNature) -> Vec<Encoun
 /// # Returns
 /// A list of encounters with their seats information populated (which is 1 if a match with the given title is found, 0 otherwise)
 ///
-pub fn get_seats_from_match_title(match_title: String, club: Club, match_type: MatchNature) -> Vec<Encounter> {
+pub fn get_seats_from_match_title(
+    match_title: String,
+    club: Club,
+    match_type: MatchNature,
+) -> Vec<Encounter> {
     // We need rotating proxy here because we are directly fecthing the resale link save in db
     let mut client = WebClient::new(ProxyMode::Rotating);
     let db = EncounterStore::open(matchs_db_path()).unwrap();
@@ -181,58 +201,63 @@ pub fn get_seats_from_match_title(match_title: String, club: Club, match_type: M
             // try to find a record with the same title and an active resale link
             for record in records {
                 if record.title == match_title && record.resale_active {
-                        // Check if the match date has passed first
-                        let date_check = Encounter::new(
+                    // Check if the match date has passed first
+                    let date_check = Encounter::new(
+                        Club::get_type_from_name(&record.club_type),
+                        record.title.clone(),
+                        record.date.clone(),
+                        match_type,
+                        None,
+                    );
+
+                    // If the match date has passed, mark the record as inactive and continue to the next record
+                    if date_check.date_passed() {
+                        log::info!(
+                            "[CACHE] Match '{}' ({}) has passed, disabling cached link",
+                            record.title,
+                            record.date,
+                        );
+                        let stale = Encounter::new(
                             Club::get_type_from_name(&record.club_type),
                             record.title.clone(),
                             record.date.clone(),
                             match_type,
                             None,
                         );
+                        let _ = db.upsert(&stale);
+                        continue;
+                    }
 
-                        // If the match date has passed, mark the record as inactive and continue to the next record
-                        if date_check.date_passed() {
-                            eprintln!(
-                                "[CACHE] Match '{}' ({}) has passed, disabling cached link",
-                                record.title, record.date,
-                            );
-                            let stale = Encounter::new(
+                    // If that records has an active resale link, try to fetch seats from it
+                    let link = &record.resale_link;
+                    match client.get_html(link) {
+                        Ok(_) => {
+                            let enc = Encounter::new(
                                 Club::get_type_from_name(&record.club_type),
-                                record.title.clone(),
-                                record.date.clone(),
+                                record.title,
+                                record.date,
                                 match_type,
-                                None,
+                                Some(record.resale_link),
                             );
-                            let _ = db.upsert(&stale);
-                            continue;
+
+                            // Stop here, we return the seats from this match (vector of 1 encounter)
+                            return get_encounters_with_seats(vec![enc], &client);
                         }
-
-                        // If that records has an active resale link, try to fetch seats from it
-                        let link = &record.resale_link;
-                        match client.get_html(link) {
-                            Ok(_) => {
-                                let enc = Encounter::new(
-                                    Club::get_type_from_name(&record.club_type),
-                                    record.title,
-                                    record.date,
-                                    match_type,
-                                    Some(record.resale_link));
-
-                                // Stop here, we return the seats from this match (vector of 1 encounter)
-                                return get_encounters_with_seats(vec![enc], &client);
-                            }
-                            Err(e) => eprintln!("Error fetching {}: {}", link, e),
+                        Err(e) => log::error!("Error fetching {}: {}", link, e),
                     }
                 }
             }
         }
-        Err(e) => eprintln!("Storage error while retrieving matches: {}", e),
+        Err(e) => log::error!("Storage error while retrieving matches: {}", e),
     }
 
     // If there is no resale link, get matches
     let matches = get_matches_from_type_and_club(match_type, club);
     // Filter by the one with the right title
-    let filtered = matches.into_iter().filter(|e| e.title == match_title).collect();
+    let filtered = matches
+        .into_iter()
+        .filter(|e| e.title == match_title)
+        .collect();
     // Get seats from the filtered match (vector of 0 or 1 encounter)
     // Change the mode to sticky to avoid changing th proxy here
     client.set_proxy_mode(ProxyMode::Sticky);
@@ -247,17 +272,20 @@ pub fn get_seats_from_match_title(match_title: String, club: Club, match_type: M
 /// # Returns
 /// A list of encounters with their seats information populated
 fn get_encounters_with_seats(matches: Vec<Encounter>, client: &impl FetchHtml) -> Vec<Encounter> {
-    matches.into_iter().map(|mut encounter| {
-        if let Some(link) = encounter.resale_link.clone() {
-            match client.get_html(&link) {
-                Ok(html) => encounter.set_seats(get_seats(&html, encounter.clone())),
-                Err(e) => eprintln!("Error fetching {}: {}", link, e),
+    matches
+        .into_iter()
+        .map(|mut encounter| {
+            if let Some(link) = encounter.resale_link.clone() {
+                match client.get_html(&link) {
+                    Ok(html) => encounter.set_seats(get_seats(&html, encounter.clone())),
+                    Err(e) => log::error!("Error fetching {}: {}", link, e),
+                }
+            } else {
+                encounter.set_seats(Vec::new());
             }
-        } else {
-            encounter.set_seats(Vec::new());
-        }
-        encounter
-    }).collect()
+            encounter
+        })
+        .collect()
 }
 
 /// Internal function to fetch matches for a given club and client, optionally filtered by match nature.
@@ -270,7 +298,6 @@ fn get_encounters_with_seats(matches: Vec<Encounter>, client: &impl FetchHtml) -
 /// A list of encounters matching the specified criteria
 ///
 fn get_matches(club: &Club, client: &impl FetchHtml, match_type: MatchNature) -> Vec<Encounter> {
-
     // Step 0: Set the correct parser from the club
     let parser: &dyn ParseMatch = match club.club_type {
         ClubType::StadeRochelais => &LarochellMatchParser,
@@ -284,7 +311,10 @@ fn get_matches(club: &Club, client: &impl FetchHtml, match_type: MatchNature) ->
     let matches = parser.parse_match(&content.unwrap_or_default());
 
     // Step 3 : filter by nature you want to get
-    matches.into_iter().filter(|encounter| encounter.nature == match_type).collect()
+    matches
+        .into_iter()
+        .filter(|encounter| encounter.nature == match_type)
+        .collect()
 }
 
 /// Internal function to fetch seats for a given encounter, based on its club type and resale link.

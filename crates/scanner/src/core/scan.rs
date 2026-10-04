@@ -1,11 +1,11 @@
-/// This module defines the core structures and logic for scanning encounters based on specified configurations and filters.
-use std::sync::Arc;
-use std::time::SystemTime;
 use filter::filter::filter_chain::FilterChain;
 use parser::core::{
     club::Club,
     encounter::{Encounter, MatchNature},
 };
+/// This module defines the core structures and logic for scanning encounters based on specified configurations and filters.
+use std::sync::Arc;
+use std::time::SystemTime;
 
 /// Represents the mode of scanning, which can be either passive or aggressive.
 #[derive(Debug, Clone, PartialEq)]
@@ -48,10 +48,13 @@ impl ScanResult {
     ///
     /// # Arguments
     /// * `encounters` - A vector of `Encounter` instances representing the results of the scan.
-    /// 
+    ///
     /// # Returns
     /// A new instance of `ScanResult` initialized with the provided encounters and the current timestamp.
     pub fn new(encounters: Vec<Encounter>) -> Self {
-        Self { encounters, scanned_at: SystemTime::now() }
+        Self {
+            encounters,
+            scanned_at: SystemTime::now(),
+        }
     }
 }
