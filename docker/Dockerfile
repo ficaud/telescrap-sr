@@ -1,20 +1,18 @@
-# Multi-stage Dockerfile for both local development and CI/CD deployment
-# Supports multiple targets:
+# Multi-stage Dockerfile for local development and CI/CD deployment
+# Single target:
 # - local-runtime: Full runtime image with Debian (for local Docker Compose)
-# - ci-runtime: Minimal image with just the binary (for GitHub Actions CI/CD)
 
 # ============================================================================== 
 # Build Stage - Common for all targets
 # ==============================================================================
 FROM rust:1.89-slim-bookworm AS builder
 
-# Install build dependencies (needed for OpenSSL and other native dependencies)
+# Install build dependencies (system libcurl/OpenSSL, so no from-source C build)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     ca-certificates \
-    cmake \
-    curl \
-    perl \
+    libcurl4-openssl-dev \
+    libssl-dev \
     pkg-config \
     && rm -rf /var/lib/apt/lists/*
 
@@ -22,7 +20,14 @@ WORKDIR /app
 COPY . .
 
 # Build the binary (release mode for smaller, optimized binary)
-RUN cargo build --release --bin telescrap-sr
+# BuildKit cache mounts persist compiled dependencies across builds. The binary
+# is copied out of the target cache mount into a real layer so later stages can
+# reference it.
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/usr/local/cargo/git \
+    --mount=type=cache,target=/app/target \
+    cargo build --release --bin telescrap-sr \
+    && cp /app/target/release/telescrap-sr /app/telescrap-sr
 
 # ============================================================================== 
 # Target 1: local-runtime - Full runtime image for local Docker Compose
@@ -32,6 +37,8 @@ FROM debian:bookworm-slim AS local-runtime
 # Install only runtime dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
+    libcurl4 \
+    libssl3 \
     && rm -rf /var/lib/apt/lists/*
 
 # Create a non-root user for security
@@ -43,7 +50,7 @@ RUN mkdir -p /app /app/data && chown -R telescrap:telescrap /app && chmod -R 755
 WORKDIR /app
 
 # Copy the built binary from builder
-COPY --from=builder /app/target/release/telescrap-sr /usr/local/bin/telescrap-sr
+COPY --from=builder /app/telescrap-sr /usr/local/bin/telescrap-sr
 
 # Copy admin-panel static assets (favicon, images, etc.) at the path expected by ServeDir
 COPY --from=builder /app/crates/admin-panel/src/interface/static /app/crates/admin-panel/src/interface/static
@@ -59,16 +66,3 @@ ENV RUST_LOG=info
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 
-# ============================================================================== 
-# Target 2: ci-runtime - Minimal image with just the binary (for CI/CD)
-# ==============================================================================
-FROM scratch AS ci-runtime
-
-# Copy SSL certificates for HTTPS connections
-COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
-
-# Copy the binary
-COPY --from=builder /app/target/release/telescrap-sr /telescrap-sr
-
-# For compatibility with GitHub Actions artifact extraction
-ENTRYPOINT ["/telescrap-sr"]
