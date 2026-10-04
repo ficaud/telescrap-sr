@@ -34,7 +34,7 @@ impl TelegramNotifier {
             pinned_message_id: state_db.get_pinned_message_id().ok().flatten(),
         };
         let header = format!(
-            "<b>[telescrap-sr] <a href=\"https://github.com/Thejulfi/telescrap-sr/blob/main/CHANGELOG.md\">v{}</a></b>",
+            "<b>[telescrap-sr] <a href=\"https://github.com/ficaud/telescrap-sr/blob/main/CHANGELOG.md\">v{}</a></b>",
             self.version
         );
 

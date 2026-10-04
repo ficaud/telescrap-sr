@@ -15,7 +15,7 @@ source ~/.cargo/env
 sudo apt install gcc
 
 # Clone and build
-git clone https://github.com/Thejulfi/telescrap-sr
+git clone https://github.com/ficaud/telescrap-sr
 cd telescrap-sr/crates/db-reader
 cargo build --release
 ```
