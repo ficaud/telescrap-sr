@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+### [2.1.13] - 2026-10-04
+
+### Added
+- `Cargo.toml` : env_logger crate to improve logging (adding date and time to the log messages) ([#27](https://github.com/ficaud/telescrap-sr/issues/27))
+- `LICENSE` : GPLv3 license
+
+### Changed
+- `project` : Fmt clean up of the entire project (that has never been done before)
+- `README.md` : refresh badges to be more useful and up to date ([#24](https://github.com/ficaud/telescrap-sr/issues/24))
+- `README.md` : removed manual server deployment (never tested it because I use docker) + overall doc refresh & clean
+
+### Fixed
+- `devcontainer.json` : 3000 is default forward port for the admin panel
+- `deploy-docker.yml` : speed up building image thanks to QEMU remplacement with dedicated targets runners ([#26](https://github.com/ficaud/telescrap-sr/issues/26))
+
 ### [2.1.12] - 2026-10-03
 
 ### Fixed
