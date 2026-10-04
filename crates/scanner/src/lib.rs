@@ -1,4 +1,4 @@
-pub mod interface;
+pub mod app;
 pub mod controller;
 pub mod core;
-pub mod app;
+pub mod interface;

@@ -1,20 +1,18 @@
-
+use crate::{
+    app::diff::{DiffType, diff},
+    controller::notify::Notify,
+    core::app_state::AppState,
+    core::scan::{ScanConfig, ScanMode, ScanResult},
+};
+use filter::filter::Filter;
 use parser::core::encounter::Encounter;
 /// This module defines the `ScanTask` struct and its associated logic for performing periodic scans of encounters,
 /// applying filters, and notifying about changes in available seats.
 use parser::interface::curl::proxy::set_proxy_enabled;
 use parser::interface::match_manager;
-use filter::filter::Filter;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use tokio::sync::watch;
-use tokio::time::{interval, Duration};
-use crate::{
-    app::diff::{diff, DiffType},
-    controller::notify::Notify,
-    core::app_state::AppState,
-    core::scan::{ScanConfig, ScanMode, ScanResult},
-};
-
+use tokio::time::{Duration, interval};
 
 /// Represents a scanning task that periodically checks for changes in encounters based on a specified configuration,
 /// applies filters to the results, and sends notifications about any detected changes.
@@ -35,10 +33,20 @@ impl<N: Notify> ScanTask<N> {
     ///
     /// # Returns
     /// A new instance of `ScanTask` initialized with the provided configuration and notifier.
-    pub fn new(mut config_rx: watch::Receiver<ScanConfig>, notifier: N, state_rx: watch::Receiver<AppState>) -> Self {
+    pub fn new(
+        mut config_rx: watch::Receiver<ScanConfig>,
+        notifier: N,
+        state_rx: watch::Receiver<AppState>,
+    ) -> Self {
         let config = config_rx.borrow_and_update().clone();
         set_proxy_enabled(config.proxy_enabled);
-        Self { config, config_rx, notifier, previous: None, state_rx }
+        Self {
+            config,
+            config_rx,
+            notifier,
+            previous: None,
+            state_rx,
+        }
     }
 
     /// Runs the scan task, periodically checking for changes in encounters, applying filters,
@@ -56,7 +64,7 @@ impl<N: Notify> ScanTask<N> {
                     set_proxy_enabled(self.config.proxy_enabled);
                     self.previous = None;
                     ticker = interval(Duration::from_secs(self.config.interval));
-                    println!("⚙️  Configuration mise à jour, redémarrage du cycle");
+                    log::info!("⚙️  Configuration mise à jour, redémarrage du cycle");
                     continue;
                 }
 
@@ -64,7 +72,7 @@ impl<N: Notify> ScanTask<N> {
                     if result.is_err() {
                         break; // sender dropped (shutdown), exit cleanly
                     }
-                    println!("🔄 État de l'application changé : {:?}", *self.state_rx.borrow());
+                    log::info!("🔄 État de l'application changé : {:?}", *self.state_rx.borrow());
                     continue;
                 }
             }
@@ -80,7 +88,9 @@ impl<N: Notify> ScanTask<N> {
             // Fetch match nature from config
             let nature = self.config.nature;
             // Check if a specific match title filter is set
-            let filter_title = self.config.filter_chain
+            let filter_title = self
+                .config
+                .filter_chain
                 .as_ref()
                 .and_then(|c| c.encounter_title())
                 .map(|s| s.to_string());
@@ -92,7 +102,7 @@ impl<N: Notify> ScanTask<N> {
                 } else {
                     match_manager::get_seats_from_matches(club, nature)
                 };
-                println!("[SCAN_TASK] {} encounter(s) retrieved", encounters.len());
+                log::info!("[SCAN_TASK] {} encounter(s) retrieved", encounters.len());
                 ScanResult::new(encounters)
             })
             .await
@@ -107,7 +117,9 @@ impl<N: Notify> ScanTask<N> {
                     .collect()
             } else {
                 // First iteration: treat available seats as new
-                scan_result.encounters.iter()
+                scan_result
+                    .encounters
+                    .iter()
                     .filter(|e| e.seats.as_ref().map_or(false, |s| !s.is_empty()))
                     .cloned()
                     .collect()
@@ -145,13 +157,15 @@ impl<N: Notify> ScanTask<N> {
             // Calculate elapsed time and send notifications if there are changes, otherwise log that no change was detected
             if !result.is_empty() {
                 let elapsed = scan_start.elapsed();
-                println!("⚠️  {} changement(s) détecté(s) ({:.2?})", result.len(), elapsed);
-                dbg!(&result);
+                log::info!(
+                    "⚠️  {} changement(s) détecté(s) ({:.2?})",
+                    result.len(),
+                    elapsed
+                );
                 self.notify_parsed_info(&result, basket_successes);
             } else {
                 #[allow(unused_variables)]
                 let elapsed = scan_start.elapsed();
-                // println!("✅ Aucun changement détecté ({:.2?})", elapsed);
             }
 
             self.previous = Some(scan_result);
@@ -175,14 +189,14 @@ impl<N: Notify> ScanTask<N> {
         let email = match std::env::var("SHOP_EMAIL") {
             Ok(v) if !v.trim().is_empty() => v,
             _ => {
-                eprintln!("[AGGRESSIVE] SHOP_EMAIL missing, auto add-to-basket skipped");
+                log::warn!("[AGGRESSIVE] SHOP_EMAIL missing, auto add-to-basket skipped");
                 return 0;
             }
         };
         let password = match std::env::var("SHOP_PASSWORD") {
             Ok(v) if !v.trim().is_empty() => v,
             _ => {
-                eprintln!("[AGGRESSIVE] SHOP_PASSWORD missing, auto add-to-basket skipped");
+                log::warn!("[AGGRESSIVE] SHOP_PASSWORD missing, auto add-to-basket skipped");
                 return 0;
             }
         };
@@ -205,14 +219,14 @@ impl<N: Notify> ScanTask<N> {
                     match add_result {
                         Ok(Ok(())) => {
                             successes += 1;
-                            println!(
+                            log::info!(
                                 "[AGGRESSIVE] Seat added to basket: {} | {}",
                                 encounter.title,
                                 seat.seat_info.full_name
                             );
                         }
                         Ok(Err(err)) => {
-                            eprintln!(
+                            log::error!(
                                 "[AGGRESSIVE] Add-to-basket failed for '{}' seat '{}': {}",
                                 encounter.title,
                                 seat.seat_info.full_name,
@@ -220,7 +234,7 @@ impl<N: Notify> ScanTask<N> {
                             );
                         }
                         Err(_) => {
-                            eprintln!(
+                            log::error!(
                                 "[AGGRESSIVE] Add-to-basket panic for '{}' seat '{}' (implementation likely incomplete)",
                                 encounter.title,
                                 seat.seat_info.full_name,
@@ -231,7 +245,7 @@ impl<N: Notify> ScanTask<N> {
             }
         }
 
-        println!(
+        log::info!(
             "[AGGRESSIVE] Basket attempts: {}, successes: {}",
             attempts,
             successes
@@ -271,7 +285,8 @@ impl<N: Notify> ScanTask<N> {
             match &encounter.seats {
                 Some(seats) if !seats.is_empty() => {
                     // Seats with a preview: one photo message per seat
-                    let (with_preview, without_preview): (Vec<_>, Vec<_>) = seats.iter()
+                    let (with_preview, without_preview): (Vec<_>, Vec<_>) = seats
+                        .iter()
                         .partition(|s| s.seat_info.preview_url.is_some());
 
                     for seat in &with_preview {
@@ -281,15 +296,20 @@ impl<N: Notify> ScanTask<N> {
                         let seat_line = if category.is_empty() {
                             format!("  • {} — <code>{}€ </code>", full_name, price)
                         } else {
-                            format!("  • [{}] {} — <code>{}€ </code>", category, full_name, price)
+                            format!(
+                                "  • [{}] {} — <code>{}€ </code>",
+                                category, full_name, price
+                            )
                         };
                         let caption = format!("{}\n\n{}", encounter_header, seat_line);
-                        self.notifier.send_photo(seat.seat_info.preview_url.as_deref().unwrap(), &caption);
+                        self.notifier
+                            .send_photo(seat.seat_info.preview_url.as_deref().unwrap(), &caption);
                     }
 
                     // Remaining seats without preview: one grouped text message
                     if !without_preview.is_empty() {
-                        let seat_list = without_preview.iter()
+                        let seat_list = without_preview
+                            .iter()
                             .map(|s| {
                                 let category = s.seat_info.composition.category.as_str();
                                 let full_name = s.seat_info.full_name.as_str();
@@ -297,16 +317,23 @@ impl<N: Notify> ScanTask<N> {
                                 if category.is_empty() {
                                     format!("  • {} — <code>{}€ </code>", full_name, price)
                                 } else {
-                                    format!("  • [{}] {} — <code>{}€ </code>", category, full_name, price)
+                                    format!(
+                                        "  • [{}] {} — <code>{}€ </code>",
+                                        category, full_name, price
+                                    )
                                 }
                             })
                             .collect::<Vec<_>>()
                             .join("\n");
-                        self.notifier.send(&format!("{}\n\n{}", encounter_header, seat_list));
+                        self.notifier
+                            .send(&format!("{}\n\n{}", encounter_header, seat_list));
                     }
                 }
                 _ => {
-                    self.notifier.send(&format!("{}\n\n  <i>Aucun siège disponible</i>", encounter_header));
+                    self.notifier.send(&format!(
+                        "{}\n\n  <i>Aucun siège disponible</i>",
+                        encounter_header
+                    ));
                 }
             }
         }

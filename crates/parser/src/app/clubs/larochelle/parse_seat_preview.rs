@@ -1,47 +1,59 @@
-use curl::easy::Easy;
 use crate::app::clubs::parsers::ParseSeatPreview;
 use crate::core::seat::SeatComposition;
+use curl::easy::Easy;
 
 const BLOCK_CODES: &[(&str, &str)] = &[
-    ("CHARENTE MARITIME CENTRALE BASSE",    "SUD - CHARENTE MAR CE BASSE"),
-    ("CHARENTE MARITIME CENTRALE HAUTE",    "SUD - CHARENTE MAR CE HAUTE"),
-    ("CHARENTE MARITIME LATERALE EST",      "SUD - CHARENTE MAR LAT EST"),
-    ("CHARENTE MARITIME LATERALE OUEST",    "SUD - CHARENTE MAR LAT OUEST"),
-    ("MACIF A",    "NORD - MACIF AS"),
-    ("MACIF A",    "NORD - MACIF AS"),
-    ("MACIF B",    "NORD - MACIF BRP"),
-    ("MACIF R",    "NORD - MACIF BRP"),
-    ("MACIF P",    "NORD - MACIF BRP"),
-    ("MACIF E",    "NORD - MACIF EL"),
-    ("MACIF L",    "NORD - MACIF EL"),
-    ("MACIF C",    "NORD - MACIF CO"),
-    ("MACIF O",    "NORD - MACIF CO"),
-    ("MACIF O",    "NORD - MACIF CO"),
-    ("MACIF D",    "NORD - MACIF DMN"),
-    ("MACIF M",    "NORD - MACIF DMN"),
-    ("MACIF N",    "NORD - MACIF DMN"),
-    ("MACIF F",    "NORD - MACIF FKJ"),
-    ("MACIF K",    "NORD - MACIF FKJ"),
-    ("MACIF J",    "NORD - MACIF FKJ"),
-    ("MACIF G",    "NORD - MACIF GH"),
-    ("MACIF H",    "NORD - MACIF GH"),
-    ("LOGES MACIF ",    "NORD - LOGES MACIF "),
-    ("CARAVELLE A",    "EST - CARAVELLE A"),
-    ("CARAVELLE B",    "EST - CARAVELLE B"),
-    ("CARAVELLE C",    "EST - CARAVELLE C"),
-    ("CARAVELLE D",    "EST - CARAVELLE D"),
-    ("CARAVELLE E",    "EST - CARAVELLE E"),
-    ("SALON MILLET",    "EST - SALON MILLET"),
-    ("JACKSON A",    "OUEST - JACKSON A"),
-    ("JACKSON B",    "OUEST - JACKSON B"),
-    ("JACKSON C",    "OUEST - JACKSON C"),
-    ("JACKSON D",    "OUEST - JACKSON D"),
-    ("SALON PROGINOV",    "OUEST - SALON PROGINOV"),
-    ("LOGES PRIVATIVES OUEST",    "SUD - LOGES PRIVATIVES OUEST"),
-    ("LOGES PRIVATIVES EST",    "SUD - LOGES PRIVATIVES EST"),
-    ("SALON ATLANTIQUE EST",    "SUD - SALON ATLANTIQUE EST"),
-    ("SALON ATLANTIQUE OUEST",    "SUD - SALON ATLANTIQUE OUEST"),
-    ("SALON 1765",    "SUD - SALON 1765"),
+    (
+        "CHARENTE MARITIME CENTRALE BASSE",
+        "SUD - CHARENTE MAR CE BASSE",
+    ),
+    (
+        "CHARENTE MARITIME CENTRALE HAUTE",
+        "SUD - CHARENTE MAR CE HAUTE",
+    ),
+    (
+        "CHARENTE MARITIME LATERALE EST",
+        "SUD - CHARENTE MAR LAT EST",
+    ),
+    (
+        "CHARENTE MARITIME LATERALE OUEST",
+        "SUD - CHARENTE MAR LAT OUEST",
+    ),
+    ("MACIF A", "NORD - MACIF AS"),
+    ("MACIF A", "NORD - MACIF AS"),
+    ("MACIF B", "NORD - MACIF BRP"),
+    ("MACIF R", "NORD - MACIF BRP"),
+    ("MACIF P", "NORD - MACIF BRP"),
+    ("MACIF E", "NORD - MACIF EL"),
+    ("MACIF L", "NORD - MACIF EL"),
+    ("MACIF C", "NORD - MACIF CO"),
+    ("MACIF O", "NORD - MACIF CO"),
+    ("MACIF O", "NORD - MACIF CO"),
+    ("MACIF D", "NORD - MACIF DMN"),
+    ("MACIF M", "NORD - MACIF DMN"),
+    ("MACIF N", "NORD - MACIF DMN"),
+    ("MACIF F", "NORD - MACIF FKJ"),
+    ("MACIF K", "NORD - MACIF FKJ"),
+    ("MACIF J", "NORD - MACIF FKJ"),
+    ("MACIF G", "NORD - MACIF GH"),
+    ("MACIF H", "NORD - MACIF GH"),
+    ("LOGES MACIF ", "NORD - LOGES MACIF "),
+    ("CARAVELLE A", "EST - CARAVELLE A"),
+    ("CARAVELLE B", "EST - CARAVELLE B"),
+    ("CARAVELLE C", "EST - CARAVELLE C"),
+    ("CARAVELLE D", "EST - CARAVELLE D"),
+    ("CARAVELLE E", "EST - CARAVELLE E"),
+    ("SALON MILLET", "EST - SALON MILLET"),
+    ("JACKSON A", "OUEST - JACKSON A"),
+    ("JACKSON B", "OUEST - JACKSON B"),
+    ("JACKSON C", "OUEST - JACKSON C"),
+    ("JACKSON D", "OUEST - JACKSON D"),
+    ("SALON PROGINOV", "OUEST - SALON PROGINOV"),
+    ("LOGES PRIVATIVES OUEST", "SUD - LOGES PRIVATIVES OUEST"),
+    ("LOGES PRIVATIVES EST", "SUD - LOGES PRIVATIVES EST"),
+    ("SALON ATLANTIQUE EST", "SUD - SALON ATLANTIQUE EST"),
+    ("SALON ATLANTIQUE OUEST", "SUD - SALON ATLANTIQUE OUEST"),
+    ("SALON 1765", "SUD - SALON 1765"),
 ];
 
 /// Private module containing the JSON structures used for deserializing the Pacifa3d API responses.
@@ -112,10 +124,12 @@ fn pacifa3d_fetch_json(url: &str) -> Option<String> {
     let mut body = Vec::new();
     {
         let mut transfer = easy.transfer();
-        transfer.write_function(|data| {
-            body.extend_from_slice(data);
-            Ok(data.len())
-        }).ok()?;
+        transfer
+            .write_function(|data| {
+                body.extend_from_slice(data);
+                Ok(data.len())
+            })
+            .ok()?;
         transfer.perform().ok()?;
     }
     String::from_utf8(body).ok()
@@ -137,7 +151,11 @@ pub fn fetch_preview_url(composition: &SeatComposition) -> Option<String> {
     let (pacifa3d_access, block_letter) = BLOCK_CODES
         .iter()
         .find(|(scraper_name, _)| scraper_name.eq_ignore_ascii_case(&composition.category))
-        .or_else(|| BLOCK_CODES.iter().find(|(scraper_name, _)| scraper_name.eq_ignore_ascii_case(&composition.bloc)))
+        .or_else(|| {
+            BLOCK_CODES
+                .iter()
+                .find(|(scraper_name, _)| scraper_name.eq_ignore_ascii_case(&composition.bloc))
+        })
         .map(|(scraper_name, pacifa3d_name)| {
             let letter = scraper_name.trim().split_whitespace().last().unwrap_or("");
             (*pacifa3d_name, letter)
@@ -177,7 +195,10 @@ pub fn fetch_preview_url(composition: &SeatComposition) -> Option<String> {
     let pano_url = seat.src.iter().find(|s| s.src_type == "PANO")?.url.as_str();
     let pano_id = pano_url.split('/').last()?.trim_end_matches(".xml");
 
-    Some(format!("{}p/panos/{}.tiles/pano_f.jpg", PACIFA3D_BASE, pano_id))
+    Some(format!(
+        "{}p/panos/{}.tiles/pano_f.jpg",
+        PACIFA3D_BASE, pano_id
+    ))
 }
 
 /// Larochelle implementation of the `ParseSeatPreview` trait.

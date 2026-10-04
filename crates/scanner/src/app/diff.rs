@@ -3,7 +3,8 @@
 use parser::core::encounter::Encounter;
 
 fn same_seat_identity(left: &parser::core::seat::Seat, right: &parser::core::seat::Seat) -> bool {
-    left.actions.pack_id == right.actions.pack_id && left.actions.ticket_id == right.actions.ticket_id
+    left.actions.pack_id == right.actions.pack_id
+        && left.actions.ticket_id == right.actions.ticket_id
 }
 
 /// Enumeration representing the type of difference detected between two sets of encounters, such as new seats or removed seats.
@@ -24,11 +25,11 @@ pub struct DiffResult {
 /// Computes the difference between two sets of encounters, identifying new and removed seats.
 /// This function is used to compare the current list of encounters with a previous list to determine what has changed,
 /// such as new seats becoming available or existing seats being removed.
-/// 
+///
 /// # Arguments
 /// * `previous` - A slice of `Encounter` instances representing the previous state of encounters.
 /// * `current` - A slice of `Encounter` instances representing the current state of encounters.
-/// 
+///
 /// # Returns
 /// A vector of `DiffResult` instances representing the differences detected between the two sets of encounters
 pub fn diff(previous: &[Encounter], current: &[Encounter]) -> Vec<DiffResult> {
@@ -65,13 +66,19 @@ pub fn diff(previous: &[Encounter], current: &[Encounter]) -> Vec<DiffResult> {
                 if !added.is_empty() {
                     let mut enc = encounter.clone();
                     enc.seats = Some(added);
-                    results.push(DiffResult { diff_type: DiffType::NewSeats, encounter_diff_only: enc });
+                    results.push(DiffResult {
+                        diff_type: DiffType::NewSeats,
+                        encounter_diff_only: enc,
+                    });
                 }
 
                 if !removed.is_empty() {
                     let mut enc = encounter.clone();
                     enc.seats = Some(removed);
-                    results.push(DiffResult { diff_type: DiffType::RemovedSeats, encounter_diff_only: enc });
+                    results.push(DiffResult {
+                        diff_type: DiffType::RemovedSeats,
+                        encounter_diff_only: enc,
+                    });
                 }
             }
         }

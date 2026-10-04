@@ -57,11 +57,11 @@ impl ProxyManager {
                         % count;
                     *self.cursor.lock().unwrap() = start;
                     *self.available.lock().unwrap() = proxies;
-                    println!("[PROXY] {} proxy(ies) loaded from {}", count, path);
+                    log::info!("[PROXY] {} proxy(ies) loaded from {}", count, path);
                     return;
                 }
-                Ok(_) => eprintln!("[PROXY] File {} is empty", path),
-                Err(e) => eprintln!("[PROXY] Failed to read {}: {}", path, e),
+                Ok(_) => log::warn!("[PROXY] File {} is empty", path),
+                Err(e) => log::error!("[PROXY] Failed to read {}: {}", path, e),
             }
         }
 
@@ -77,10 +77,10 @@ impl ProxyManager {
                     % count;
                 *self.cursor.lock().unwrap() = start;
                 *self.available.lock().unwrap() = proxies;
-                println!("[PROXY] {} proxy(ies) loaded from ProxyScrape API", count);
+                log::info!("[PROXY] {} proxy(ies) loaded from ProxyScrape API", count);
             }
             Err(e) => {
-                eprintln!("[PROXY] Failed to fetch proxy list: {e}");
+                log::error!("[PROXY] Failed to fetch proxy list: {e}");
             }
         }
     }
@@ -125,7 +125,7 @@ impl ProxyManager {
             .collect();
 
         if proxies.is_empty() {
-            eprintln!("[PROXY] ProxyScrape API returned an empty list");
+            log::warn!("[PROXY] ProxyScrape API returned an empty list");
         }
 
         Ok(proxies)
@@ -172,7 +172,7 @@ impl ProxyManager {
             // ip:port:user:pass
             4 => format!("http://{}:{}@{}:{}", parts[2], parts[3], parts[0], parts[1]),
             _ => {
-                eprintln!("[PROXY] Skipping malformed proxy line: {}", line);
+                log::warn!("[PROXY] Skipping malformed proxy line: {}", line);
                 String::new()
             }
         }
@@ -215,7 +215,7 @@ impl ProxyManager {
             if *cursor > 0 {
                 *cursor = cursor.saturating_sub(1);
             }
-            println!(
+            log::info!(
                 "[PROXY] Removed {} — {} proxy(ies) remaining",
                 url,
                 available.len()
@@ -260,7 +260,11 @@ impl ProxyManager {
             return None;
         }
         let cursor = self.cursor.lock().unwrap();
-        let idx = if *cursor >= available.len() { 0 } else { *cursor };
+        let idx = if *cursor >= available.len() {
+            0
+        } else {
+            *cursor
+        };
         Some(available[idx].url.clone())
     }
 
@@ -283,14 +287,13 @@ impl ProxyManager {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::interface::curl::proxy::proxy_api::{PROXY_ENABLED, ProxyMode, set_proxy_enabled, retry_with_proxy_mode};
+    use crate::interface::curl::proxy::proxy_api::{
+        PROXY_ENABLED, ProxyMode, retry_with_proxy_mode, set_proxy_enabled,
+    };
 
     /// Helper to create a ProxyManager pre-populated with test proxies.
     fn make_manager(urls: &[&str]) -> ProxyManager {
-        let proxies: Vec<Proxy> = urls
-            .iter()
-            .map(|u| Proxy { url: u.to_string() })
-            .collect();
+        let proxies: Vec<Proxy> = urls.iter().map(|u| Proxy { url: u.to_string() }).collect();
         ProxyManager {
             all: Mutex::new(proxies.clone()),
             available: Mutex::new(proxies),
@@ -426,10 +429,13 @@ mod tests {
 
     #[test]
     fn retry_with_proxy_disabled_mode_skips_proxy() {
-        let result = retry_with_proxy_mode(|proxy| {
-            assert!(proxy.is_none(), "Expected no proxy in Disabled mode");
-            Ok::<_, Box<dyn std::error::Error>>(42)
-        }, ProxyMode::Disabled);
+        let result = retry_with_proxy_mode(
+            |proxy| {
+                assert!(proxy.is_none(), "Expected no proxy in Disabled mode");
+                Ok::<_, Box<dyn std::error::Error>>(42)
+            },
+            ProxyMode::Disabled,
+        );
         assert_eq!(result.unwrap(), 42);
     }
 
@@ -449,10 +455,13 @@ mod tests {
     #[test]
     fn retry_with_proxy_failover_disabled_mode() {
         set_proxy_enabled(false);
-        let result = retry_with_proxy_mode(|proxy| {
-            assert!(proxy.is_none(), "Expected no proxy when globally disabled");
-            Ok::<_, Box<dyn std::error::Error>>(42)
-        }, ProxyMode::Rotating);
+        let result = retry_with_proxy_mode(
+            |proxy| {
+                assert!(proxy.is_none(), "Expected no proxy when globally disabled");
+                Ok::<_, Box<dyn std::error::Error>>(42)
+            },
+            ProxyMode::Rotating,
+        );
         assert_eq!(result.unwrap(), 42);
         set_proxy_enabled(true);
     }

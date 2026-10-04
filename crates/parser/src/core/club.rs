@@ -2,13 +2,13 @@
 
 /// ClubType isn an enumeration of the different rugby clubs that can be parsed by the application.
 /// It currently includes
-/// 
+///
 /// StadeRochelais
 /// UnionBordeauxBegles -> not implemented yet
 #[derive(Debug, Clone)]
 pub enum ClubType {
     StadeRochelais,
-    UnionBordeauxBegles, 
+    UnionBordeauxBegles,
 }
 
 /// Club structure that represents a rugby club, including its name, type, and the URL of its ticketing website.
@@ -21,9 +21,8 @@ pub struct Club {
 
 /// Implementation of the Club struct, including a constructor and a method to get the URL of the club's ticketing website.
 impl Club {
-
     /// Creates a new Club instance with the given name, type, and URL.
-    /// 
+    ///
     /// # Arguments
     /// * `name` - The name of the club
     /// * `club_type` - The type of the club (from the ClubType enum
@@ -31,11 +30,15 @@ impl Club {
     /// # Returns
     /// A new instance of the Club struct with the provided information
     pub fn new(name: String, club_type: ClubType, url: String) -> Self {
-        Self { name, club_type, url }
+        Self {
+            name,
+            club_type,
+            url,
+        }
     }
 
     /// Returns the URL of the club's ticketing website.
-    /// 
+    ///
     /// # Returns
     /// A string slice containing the URL of the club's ticketing website
     pub fn get_url(&self) -> &str {
@@ -43,7 +46,7 @@ impl Club {
     }
 
     /// Utility function to get the ClubType enum variant from a club name string.
-    /// 
+    ///
     /// # Arguments
     /// * `name` - The name of the club as a string
     /// # Returns

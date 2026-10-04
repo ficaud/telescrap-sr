@@ -1,7 +1,3 @@
-/// This module contains the implementation of the match parser for Stade Rochelais,
-/// which extracts match information from the club's website.
-use std::collections::HashSet;
-use scraper::{Html, Selector};
 use crate::{
     app::clubs::parsers::ParseMatch,
     core::{
@@ -9,6 +5,10 @@ use crate::{
         encounter::{Encounter, MatchNature},
     },
 };
+use scraper::{Html, Selector};
+/// This module contains the implementation of the match parser for Stade Rochelais,
+/// which extracts match information from the club's website.
+use std::collections::HashSet;
 
 /// The `LarochellMatchParser` struct implements the `ParseMatch` trait, providing functionality to parse match information from HTML content specific to Stade Rochelais.
 pub struct LarochellMatchParser;
@@ -16,7 +16,7 @@ pub struct LarochellMatchParser;
 /// Parses the provided HTML content to extract match information for Stade Rochelais.
 /// It looks for specific HTML elements that contain the match title, date, and resale link, and constructs a list of `Encounter` instances based on the extracted data.
 /// The function also ensures that duplicate matches (with the same title and date) are filtered out from the final list of encounters.
-/// 
+///
 /// # Arguments
 /// * `html` - A string slice containing the HTML content to be parsed
 /// # Returns
@@ -65,8 +65,19 @@ pub fn parse_match(html: &str) -> Vec<Encounter> {
                 .select(&link_selector)
                 .next()
                 .and_then(|el| el.value().attr("href"))
-                .map(|href| format!("https://billetterie.staderochelais.com/{}", href.trim_start_matches('/')));
-            encounters.push(Encounter::new(ClubType::StadeRochelais, title, date, nature, resale_link));
+                .map(|href| {
+                    format!(
+                        "https://billetterie.staderochelais.com/{}",
+                        href.trim_start_matches('/')
+                    )
+                });
+            encounters.push(Encounter::new(
+                ClubType::StadeRochelais,
+                title,
+                date,
+                nature,
+                resale_link,
+            ));
         }
     }
 

@@ -1,8 +1,6 @@
 /// This module defines the EncounterFilter, which is a specific implementation of the Filter trait
 /// that allow filtering specific encounters tyoe, name or date.
-use parser::core::{
-    encounter::Encounter,
-};
+use parser::core::encounter::Encounter;
 
 use crate::filter::Filter;
 
@@ -16,7 +14,7 @@ impl EncounterFilter {
     ///
     /// # Arguments
     /// - `name`: Optional criteria for the encounter name. If None, all names are considered.
-    /// 
+    ///
     /// # Return
     /// A new instance of EncounterFilter configured with the specified criteria.
     pub fn new(name: Option<String>) -> Self {
@@ -28,7 +26,8 @@ impl EncounterFilter {
 /// allowing it to be used in a filter chain to process encounters based on encounter name criteria.
 impl Filter<Vec<Encounter>> for EncounterFilter {
     fn apply(&self, encounters: &Vec<Encounter>) -> Vec<Encounter> {
-        encounters.iter()
+        encounters
+            .iter()
             .filter(|e| {
                 if let Some(name) = &self.name {
                     e.title.contains(name)

@@ -1,9 +1,9 @@
+use super::redb::StorageError;
+use redb::{Database, ReadableDatabase, TableDefinition};
 /// This module implements the `BotStateStore` struct, which provides persistent storage for the bot's runtime state
 /// using a `redb` embedded database. Currently, the state consists of the pinned Telegram message ID,
 /// which is updated at each startup to reflect the current version.
 use std::path::Path;
-use redb::{Database, ReadableDatabase, TableDefinition};
-use super::redb::StorageError;
 
 const STATE_TABLE: TableDefinition<&str, i32> = TableDefinition::new("state");
 
@@ -17,7 +17,7 @@ pub struct BotStateStore {
 impl BotStateStore {
     /// Opens the state database at the specified path, creating it if it doesn't exist,
     /// and ensures the state table is initialized.
-    /// 
+    ///
     /// # Arguments
     /// * `path` - The file path where the state database should be created or opened
     ///

@@ -14,7 +14,6 @@ impl std::fmt::Debug for FilterChain {
 
 /// A filter chain that allows applying multiple filters sequentially to a list of encounters.
 impl FilterChain {
-
     /// Creates a new, empty FilterChain.
     ///
     /// # Return
@@ -27,7 +26,7 @@ impl FilterChain {
     ///
     /// # Arguments
     /// - `filter`: An implementation of the Filter trait that operates on a vector of encounters.
-    /// 
+    ///
     /// # Return
     /// The FilterChain instance with the new filter added, allowing for method chaining.
     pub fn add(mut self, filter: impl Filter<Vec<Encounter>> + Send + Sync + 'static) -> Self {
@@ -69,7 +68,7 @@ impl Filter<Vec<Encounter>> for FilterChain {
     ///
     /// # Arguments
     /// - `encounters`: A reference to a vector of encounters to be filtered.
-    /// 
+    ///
     /// # Return
     /// A vector of encounters that have passed through all filters in the chain.
     fn apply(&self, encounters: &Vec<Encounter>) -> Vec<Encounter> {

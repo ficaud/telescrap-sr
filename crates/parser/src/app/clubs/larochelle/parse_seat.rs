@@ -1,7 +1,3 @@
-/// This module contains the implementation of the `ParseSeat` trait for the Stade Rochelais website,
-/// allowing the application to parse seat information from the HTML content of the Stade Rochelais ticketing pages.
-use std::collections::HashMap;
-use scraper::{Html, Selector};
 use crate::{
     app::clubs::parsers::ParseSeat,
     core::{
@@ -9,12 +5,16 @@ use crate::{
         seat::{Seat, SeatAction, SeatComposition, SeatInfo},
     },
 };
+use scraper::{Html, Selector};
+/// This module contains the implementation of the `ParseSeat` trait for the Stade Rochelais website,
+/// allowing the application to parse seat information from the HTML content of the Stade Rochelais ticketing pages.
+use std::collections::HashMap;
 
 /// Private module containing the JSON structures used for deserializing the seat information from the HTML content
 /// of the Stade Rochelais website.
 mod json {
-    use std::collections::HashMap;
     use serde::Deserialize;
+    use std::collections::HashMap;
 
     #[derive(Deserialize)]
     pub struct Pack {
@@ -90,7 +90,7 @@ impl Default for PageContext {
 
 /// Internal function to extract necessary context information from the page, such as AJAX URLs and form tokens,
 /// which are required for performing actions on the seats (like adding to cart).
-/// 
+///
 /// The function looks for specific HTML elements that contain the context information, such as a script tag with the Drupal settings JSON and input fields with form tokens.
 /// It then deserializes the JSON content to extract the relevant information and constructs a `PageContext` struct containing the extracted data.
 ///
@@ -99,14 +99,23 @@ impl Default for PageContext {
 /// # Returns
 /// An `Option<PageContext>` containing the extracted context information, or `None` if the necessary information could not be found or parsed from the HTML content
 fn extract_page_context(document: &Html) -> Option<PageContext> {
-    let script_selector = Selector::parse("script[data-drupal-selector='drupal-settings-json']").unwrap();
+    let script_selector =
+        Selector::parse("script[data-drupal-selector='drupal-settings-json']").unwrap();
     let slider_selector = Selector::parse("input.hubber-slider-input").unwrap();
     let form_build_id_selector = Selector::parse("input[name='form_build_id']").unwrap();
 
-    let settings_json = document.select(&script_selector).next()?.text().collect::<String>();
+    let settings_json = document
+        .select(&script_selector)
+        .next()?
+        .text()
+        .collect::<String>();
     let settings: json::DrupalSettings = serde_json::from_str(&settings_json).ok()?;
 
-    let ajax_url = settings.ajax.get("edit-add-to-cart").map(|e| e.url.clone()).unwrap_or_default();
+    let ajax_url = settings
+        .ajax
+        .get("edit-add-to-cart")
+        .map(|e| e.url.clone())
+        .unwrap_or_default();
     let libraries = settings.ajax_page_state.libraries;
 
     let slider = document.select(&slider_selector).next()?;
@@ -128,11 +137,20 @@ fn extract_page_context(document: &Html) -> Option<PageContext> {
         .unwrap_or("")
         .to_string();
 
-    let category_names = settings.resale
+    let category_names = settings
+        .resale
         .map(|r| r.attributes.into_iter().map(|(k, v)| (k, v.name)).collect())
         .unwrap_or_default();
 
-    Some(PageContext { ajax_url, libraries, price_min, price_max, form_build_id, form_token, category_names })
+    Some(PageContext {
+        ajax_url,
+        libraries,
+        price_min,
+        price_max,
+        form_build_id,
+        form_token,
+        category_names,
+    })
 }
 
 /// Parses the provided HTML content to extract seat information for a given encounter related to Stade Rochelais.
@@ -140,7 +158,7 @@ fn extract_page_context(document: &Html) -> Option<PageContext> {
 /// instances based on the extracted data, including the seat composition and actions that can be performed on the seat (like adding to cart).
 ///
 /// The function also extracts necessary context information from the page, such as AJAX URLs and form tokens, which are required for performing actions on the seats.
-/// 
+///
 /// # Arguments
 /// * `html` - A string slice containing the HTML content to be parsed
 /// * `encounter` - The encounter for which the seat information is being parsed (used to determine the correct parser based on club type)
@@ -161,7 +179,7 @@ pub fn parse_seat(html: &str, _encounter: Encounter) -> Vec<Seat> {
     let mut seats = Vec::new();
 
     // The seat information is contained in elements with the class `js-listing-plain` and a `data-json` attribute, which contains a JSON string with the seat details.
-    // The function iterates over each of these elements, parses the JSON data to extract the seat information, and constructs `Seat` instances based on the extracted data, 
+    // The function iterates over each of these elements, parses the JSON data to extract the seat information, and constructs `Seat` instances based on the extracted data,
     // including the seat composition and actions that can be performed on the seat (like adding to cart).
     for pack_el in document.select(&pack_selector) {
         let data_json = match pack_el.value().attr("data-json") {
@@ -171,7 +189,7 @@ pub fn parse_seat(html: &str, _encounter: Encounter) -> Vec<Seat> {
         let pack: json::Pack = match serde_json::from_str(data_json) {
             Ok(p) => p,
             Err(e) => {
-                eprintln!("Failed to parse pack JSON: {}", e);
+                log::warn!("Failed to parse pack JSON: {}", e);
                 continue;
             }
         };
@@ -197,18 +215,20 @@ pub fn parse_seat(html: &str, _encounter: Encounter) -> Vec<Seat> {
             };
 
             // Determine the category of the seat based on the category ID from the pack and the category names extracted from the page context
-            let category = pack.category_id.as_deref()
-                    .and_then(|id| context.category_names.get(id))
-                    .cloned()
-                    .unwrap_or_default();
+            let category = pack
+                .category_id
+                .as_deref()
+                .and_then(|id| context.category_names.get(id))
+                .cloned()
+                .unwrap_or_default();
 
             // Construct a `Seat` instance based on the extracted seat information
             seats.push(Seat {
                 seat_info: SeatInfo {
-                        full_name: seat_text.clone(),
-                        composition: get_seat_composition(&seat_text, &category),
-                        preview_url: None,
-                    },
+                    full_name: seat_text.clone(),
+                    composition: get_seat_composition(&seat_text, &category),
+                    preview_url: None,
+                },
                 price: pack.amount_by_ticket.clone(),
                 actions,
             });
@@ -219,15 +239,15 @@ pub fn parse_seat(html: &str, _encounter: Encounter) -> Vec<Seat> {
 }
 
 /// Internal function to parse seat composition from seat information and category.
-/// 
+///
 /// The seat composition is the detailed breakdown of a seat's location and category
 /// extracted from the seat information string and the category name.
-/// 
+///
 /// The function splits the seat information into parts and identifies the
 /// access type, row, and seat number based on specific prefixes in the text.
-/// 
+///
 /// example : "Accès Tribune Or • Rang 5 • Siège 12" will be parsed into access: "Tribune Or", row: "5", seat_number: 12
-/// 
+///
 /// # Arguments
 /// * `seat_info` - The seat information string to parse
 /// * `category` - The category of the seat
@@ -235,7 +255,12 @@ pub fn parse_seat(html: &str, _encounter: Encounter) -> Vec<Seat> {
 /// A `SeatComposition` struct containing the parsed seat composition information
 fn get_seat_composition(seat_info: &str, category: &str) -> SeatComposition {
     let parts: Vec<&str> = seat_info.split('•').map(|s| s.trim()).collect();
-    let mut composition = SeatComposition { category: category.to_string(), bloc: String::new(), row: String::new(), seat_number: 0 };
+    let mut composition = SeatComposition {
+        category: category.to_string(),
+        bloc: String::new(),
+        row: String::new(),
+        seat_number: 0,
+    };
 
     for part in parts {
         if part.starts_with("Bloc") {
@@ -259,4 +284,3 @@ impl ParseSeat for LarochellSeatParser {
         parse_seat(html, encounter)
     }
 }
-
