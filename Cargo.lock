@@ -2208,7 +2208,7 @@ dependencies = [
 
 [[package]]
 name = "telescrap-sr"
-version = "2.1.13"
+version = "2.1.14"
 dependencies = [
  "admin-panel",
  "chrono",
