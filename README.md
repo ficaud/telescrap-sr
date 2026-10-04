@@ -1,11 +1,19 @@
-# telescrap-sr
-<br>
+<div align="center">
+
 <p align="center">
 	<img src="doc/img/logo.png" width="150">
 </p>
 
-[![version](https://img.shields.io/github/v/release/Thejulfi/telescrap-sr?label=version&color=blue)](https://github.com/Thejulfi/telescrap-sr/releases)
-[![issues](https://img.shields.io/github/issues/Thejulfi/telescrap-sr?label=issues&color=orange)](https://github.com/Thejulfi/telescrap-sr/issues)
+</br>
+
+# TELESCRAP 
+
+[![check](https://github.com/ficaud/telescrap-sr/actions/workflows/check.yml/badge.svg)](https://github.com/ficaud/telescrap-sr/actions/workflows/check.yml)
+[![version](https://img.shields.io/github/v/release/ficaud/telescrap-sr?label=version&color=blue)](https://github.com/ficaud/telescrap-sr/releases)
+[![docker](https://img.shields.io/badge/ghcr.io-telescrap--sr-blue)](https://github.com/ficaud/telescrap-sr/pkgs/container/telescrap-sr)
+
+</br>
+</div>
 
 Scraping tool to get notification for resale ticket, currently implemented for Stade Rochelais rugby matches.
 
