@@ -38,7 +38,9 @@
   "remoteUser": "tscrap",
   "runArgs": [
     "-v",
-    "${localEnv:SSH_AUTH_SOCK}:/tmp/ssh-agent.socket"
+    "${localEnv:SSH_AUTH_SOCK}:/tmp/ssh-agent.socket",
+    "-p",
+    "3000:3000"
   ],
-  "forwardPorts": [8000]
+  "forwardPorts": [3000]
 }
