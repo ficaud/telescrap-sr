@@ -93,16 +93,16 @@ jobs:
           fi
 
   build-binaries:
-    name: Build Binary (${{ matrix.target }})
+    name: Build Binary (${{ matrix.artifact_name }})
     needs: prepare-release
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
       matrix:
         include:
-          - target: x86_64-unknown-linux-gnu
+          - runner: ubuntu-latest
             artifact_name: telescrap-sr-linux-amd64
-          - target: aarch64-unknown-linux-gnu
+          - runner: ubuntu-24.04-arm
             artifact_name: telescrap-sr-linux-arm64
     steps:
       - name: Checkout code at release tag
@@ -110,28 +110,31 @@ jobs:
         with:
           ref: ${{ needs.prepare-release.outputs.tag }}
 
-      - name: Install Zig
-        uses: mlugg/setup-zig@v2
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
 
-      - name: Install cargo-zigbuild
-        run: cargo install cargo-zigbuild --locked
-
-      - name: Add Rust target
-        run: rustup target add ${{ matrix.target }}
+      - name: Install native build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            pkg-config \
+            libcurl4-openssl-dev \
+            libssl-dev \
+            ca-certificates
 
       - name: Build release binary
-        run: cargo zigbuild --release --target ${{ matrix.target }}
+        run: cargo build --release --bin telescrap-sr
 
       - name: Package binary
         shell: bash
         env:
-          TARGET: ${{ matrix.target }}
           ARTIFACT_NAME: ${{ matrix.artifact_name }}
           VERSION: ${{ needs.prepare-release.outputs.version }}
           BIN_NAME: ${{ env.BIN_NAME }}
         run: |
           mkdir -p dist
-          cp "target/${TARGET}/release/${BIN_NAME}" "dist/${BIN_NAME}"
+          cp "target/release/${BIN_NAME}" "dist/${BIN_NAME}"
           chmod +x "dist/${BIN_NAME}"
           tar -C dist -czf "${ARTIFACT_NAME}-v${VERSION}.tar.gz" "${BIN_NAME}"
 
